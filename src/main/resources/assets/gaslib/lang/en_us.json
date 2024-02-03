@@ -1,0 +1,9 @@
+{
+    "command.${mod_id}.gas.exception.unknown_variant" : "No gas `%1\$s` exists",
+    "command.${mod_id}.gas.modify.add.success"        : "Added %2\$s units (%3\$s volumes) of `%1\$s` gas at %5\$s %6\$s %7\$s in `%4\$s`",
+    "command.${mod_id}.gas.modify.add.exception"      : "Failed to add %2\$s units (%3\$s volumes) of `%1\$s` gas at %5\$s %6\$s %7\$s in `%4\$s`",
+    "command.${mod_id}.gas.modify.remove.success"     : "Removed %2\$s units (%3\$s volumes) of `%1\$s` gas at %5\$s %6\$s %7\$s in `%4\$s`",
+    "command.${mod_id}.gas.modify.remove.exception"   : "Failed to remove %2\$s units (%3\$s volumes) of `%1\$s` gas at %5\$s %6\$s %7\$s in `%4\$s`",
+    "command.${mod_id}.gas.purge.specific.success"    : "Queued purge of all loaded `%1\$s` gas in `%2\$s`",
+    "command.${mod_id}.gas.purge.general.success"     : "Queued purge of all loaded gases in `%1\$s`"
+}

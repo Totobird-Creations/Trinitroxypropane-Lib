@@ -1,0 +1,59 @@
+{
+	"schemaVersion": 1,
+	"id": "${mod_id}",
+	"version": "${mod_version}",
+	"name": "${mod_name}",
+	"description": "Gas physics library with support for VS2.",
+	"authors": [
+		"Totobird Creations"
+	],
+	"contact": {
+	},
+	"license": "TODO",
+	"icon": "assets/${mod_id}/icon.png",
+	"environment": "*",
+
+	"custom" : {
+		"cardinal-components" : [
+			"${mod_id}:gas_chunk"
+		]
+	},
+	"entrypoints": {
+		"main": [
+			{
+				"value": "${mod_group}.${mod_id}.Mod",
+				"adapter": "kotlin"
+			}
+		],
+		"client": [
+			{
+				"value": "${mod_group}.${mod_id}.Mod",
+				"adapter": "kotlin"
+			}
+		],
+		"cardinal-components": [
+			{
+				"value": "${mod_group}.${mod_id}.world.GasServer",
+				"adapter": "kotlin"
+			}
+		]
+	},
+	"depends": {
+
+		"java"                   : ">=17",
+		"minecraft"              : "~${version_minecraft}",
+		"fabricloader"           : ">=${version_fabric}",
+		"fabric-language-kotlin" : ">=${version_kotlin}",
+
+		"fabric-api" : ">=${version_fabricapi}",
+
+		"cardinal-components-chunk" : ">=${version_cardinalcomponentsapi}"
+
+	},
+	"compat": [
+
+		"create",
+		"valkyrienskies"
+
+	]
+}

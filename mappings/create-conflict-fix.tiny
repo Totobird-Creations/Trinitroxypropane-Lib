@@ -1,0 +1,3 @@
+tiny	2	0	intermediary	named
+c	com/simibubi/create/foundation/gui/widget/AbstractSimiWidget	com/simibubi/create/foundation/gui/widget/AbstractSimiWidget
+	m	(Lnet/minecraft/class_332;IIF)V	renderButton	renderButton$fixConflict
