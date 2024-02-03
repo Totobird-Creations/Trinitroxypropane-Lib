@@ -9,7 +9,7 @@
 	],
 	"contact": {
 	},
-	"license": "TODO",
+	"license": "GNU LGPL 2.1",
 	"icon": "assets/${mod_id}/icon.png",
 	"environment": "*",
 
