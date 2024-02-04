@@ -8,7 +8,7 @@ import net.totobirdcreations.gaslib.api.AbstractGasVariant
 import net.totobirdcreations.gaslib.api.GasAPI
 import net.totobirdcreations.gaslib.util.RGBA
 import org.joml.Vector3d
-import kotlin.math.cosh
+import kotlin.math.cbrt
 
 
 object SuperheatedGas : AbstractGasVariant(Identifier("c", "superheated")) {
@@ -18,17 +18,18 @@ object SuperheatedGas : AbstractGasVariant(Identifier("c", "superheated")) {
         if (! this.enabled) {
             this.enabled = true;
             GasAPI.registerGasVariant(this);
-            GasAPI.registerBurnableFluid(Fluids.LAVA         , this, 0.001);
-            GasAPI.registerBurnableFluid(Fluids.FLOWING_LAVA , this, 0.001);
+            GasAPI.registerBurnableFluid(Fluids.LAVA         , this, 0.01);
+            GasAPI.registerBurnableFluid(Fluids.FLOWING_LAVA , this, 0.01);
         }
     }
 
     override fun volumePerAmount(world: ServerWorld, pos: BlockPos): Double {
-        return 0.001;
+        return 0.0001;
     }
 
     override fun tick(world: ServerWorld, pos: BlockPos, motion: Vector3d, amount: Double): RGBA {
-        return RGBA.ORANGE.withAlpha((0.25f * (1.0f - 1.0f / cosh(amount.toFloat() * 4.0f))).coerceAtLeast(0.0625f));
+        val amountF = amount.toFloat();
+        return RGBA.ORANGE.withAlpha((0.125f * cbrt(1.5f * amountF - 1.0f) + 0.125f + 0.1f * amountF).coerceAtLeast(0.03125f));
     }
 
 }

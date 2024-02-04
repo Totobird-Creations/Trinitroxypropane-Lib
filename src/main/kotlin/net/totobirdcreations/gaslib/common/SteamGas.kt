@@ -18,13 +18,13 @@ object SteamGas : AbstractGasVariant(Identifier("c", "steam")) {
         if (! this.enabled) {
             this.enabled = true;
             GasAPI.registerGasVariant(this);
-            GasAPI.registerBurnableFluid(Fluids.WATER         , this, 0.0001);
-            GasAPI.registerBurnableFluid(Fluids.FLOWING_WATER , this, 0.0001);
+            GasAPI.registerBurnableFluid(Fluids.WATER         , this, 0.001);
+            GasAPI.registerBurnableFluid(Fluids.FLOWING_WATER , this, 0.001);
         }
     }
 
     override fun volumePerAmount(world: ServerWorld, pos: BlockPos): Double {
-        return 0.001;
+        return 0.0001;
     }
 
     override fun tick(world: ServerWorld, pos: BlockPos, motion: Vector3d, amount: Double): RGBA {

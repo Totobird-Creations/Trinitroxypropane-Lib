@@ -41,7 +41,7 @@ class GasBurnerBlockEntity(pos: BlockPos, state: BlockState) : KineticBlockEntit
                 val fluid  = this.variant.fluid;
                 val amount = this.amount.toDouble();
                 for ((gas, multiplier) in GasRegistry.getRegisteredBurnableFluidGasVariant(fluid)) {
-                    GasServer.modifyAmount(world, offset, gas, amount * multiplier * 10.0);
+                    GasServer.modifyAmount(world, offset, gas, amount * multiplier);
                 }
             }
             this.amount  = 0;

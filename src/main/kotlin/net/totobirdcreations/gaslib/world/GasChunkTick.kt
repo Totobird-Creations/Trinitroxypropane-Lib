@@ -67,21 +67,14 @@ internal fun GasChunk.tick(gasWorld : GasWorld) {
                 );
 
                 // Movement along the motion has a higher weight.
-                val veca = Vector3d(block.motion.x, block.motion.y, block.motion.z);
-                if (veca.length() > 0.0) {veca.normalize();}
-                dirWeight += (veca.dot(
+                val veca = gasWorld.getMotion(dirInfo.chunkPos, dirInfo.blockPos) ?: Vector3d();
+                val vecb = Vector3d(veca.x, veca.y, veca.z);
+                if (vecb.length() > 0.0) {vecb.normalize();}
+                dirWeight += (vecb.dot(
                     dir.offsetX.toDouble(),
                     dir.offsetY.toDouble(),
                     dir.offsetZ.toDouble()
-                ) * 0.5 + 0.5).coerceAtLeast(0.0) * 100000.0;
-                val vecb = gasWorld.getMotion(dirInfo.chunkPos, dirInfo.blockPos) ?: Vector3d();
-                val vecc = Vector3d(vecb.x, vecb.y, vecb.z);
-                if (vecc.length() > 0.0) {vecc.normalize();}
-                dirWeight += (vecc.dot(
-                    dir.offsetX.toDouble(),
-                    dir.offsetY.toDouble(),
-                    dir.offsetZ.toDouble()
-                ) * 0.5 + 0.5).coerceAtLeast(0.0) * 100000.0;
+                ) * 0.5 + 0.5).coerceAtLeast(0.0) * 10000.0;
 
                 // Blocked by walls.
                 dirWeight *= 1.0 - gas.transferResistance(gasWorld.world, pos, dir);
@@ -133,22 +126,26 @@ internal fun GasChunk.tick(gasWorld : GasWorld) {
             }
         }
 
-        val nextMotionLen = nextMotion.length();
-        if (nextMotionLen > MAX_MOTION) {
-            nextMotion.normalize().mul(MAX_MOTION);
-        }
-        if (block.motion.distanceSquared(nextMotion) > 0.01) {
-            nextMotion.sub(block.motion);
-            nextMotion.mul(0.5);
-            block.motion.add(nextMotion);
-            save = true;
-        }
-        if (colour != null && colour.a > 0.0) {
-            blocks.add(GasParticles.GasParticlesBlock(
-                pos,
-                colour,
-                block.motion
-            ));
+        if (block.gases.isEmpty()) {
+            block.motion.zero();
+        } else {
+            val nextMotionLen = nextMotion.length();
+            if (nextMotionLen > MAX_MOTION) {
+                nextMotion.normalize().mul(MAX_MOTION);
+            }
+            if (block.motion.distanceSquared(nextMotion) > 0.01) {
+                nextMotion.sub(block.motion);
+                nextMotion.mul(0.5);
+                block.motion.add(nextMotion);
+                save = true;
+            }
+            if (colour != null && colour.a > 0.0) {
+                blocks.add(GasParticles.GasParticlesBlock(
+                    pos,
+                    colour,
+                    block.motion
+                ));
+            }
         }
 
     }

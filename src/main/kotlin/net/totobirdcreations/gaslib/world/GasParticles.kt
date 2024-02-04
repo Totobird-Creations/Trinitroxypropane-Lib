@@ -31,7 +31,7 @@ internal object GasParticles {
 
 
     @Environment(EnvType.CLIENT)
-    private val chunks : ConcurrentHashMap<ChunkPos, MutableMap<BlockPos, WorldParticleBuilder>> = ConcurrentHashMap();
+    private val chunks : ConcurrentHashMap<ChunkPos, MutableMap<BlockPos, Pair<WorldParticleBuilder, Vector3d>>> = ConcurrentHashMap();
 
     @Environment(EnvType.CLIENT)
     fun loadChunk(chunk : WorldChunk) {
@@ -46,7 +46,15 @@ internal object GasParticles {
     fun tickClient(world : ClientWorld) {
         for ((_, chunk) in this.chunks) {
             for ((pos, particle) in chunk) {
-                particle.spawn(world, pos.x + 0.5, pos.y + 0.5, pos.z + 0.5);
+                val (builder, motion) = particle;
+                builder
+                    .setMotion(motion.x, motion.y, motion.z)
+                    .setLifetime(5)
+                    .spawn(world, pos.x + 0.5, pos.y + 0.5, pos.z + 0.5);
+                builder
+                    .setMotion(0.0, 0.0, 0.0)
+                    .setLifetime(5)
+                    .spawn(world, pos.x + 0.5, pos.y + 0.5, pos.z + 0.5);
             }
         }
     }
@@ -65,9 +73,9 @@ internal object GasParticles {
             packet.writeFloat    (block.colour.g.coerceIn(0.0f, 1.0f));
             packet.writeFloat    (block.colour.b.coerceIn(0.0f, 1.0f));
             packet.writeFloat    (block.colour.a.coerceIn(0.0f, 1.0f));
-            packet.writeDouble   ((block.motion.x / MAX_MOTION * 500.0).coerceIn(-1.0, 1.0));
-            packet.writeDouble   ((block.motion.y / MAX_MOTION * 500.0).coerceIn(-1.0, 1.0));
-            packet.writeDouble   ((block.motion.z / MAX_MOTION * 500.0).coerceIn(-1.0, 1.0));
+            packet.writeDouble   ((block.motion.x / MAX_MOTION * 100.0).coerceIn(-1.0, 1.0));
+            packet.writeDouble   ((block.motion.y / MAX_MOTION * 100.0).coerceIn(-1.0, 1.0));
+            packet.writeDouble   ((block.motion.z / MAX_MOTION * 100.0).coerceIn(-1.0, 1.0));
         }
         for (player in players) {
             ServerPlayNetworking.send(player, SPAWN_CHANNEL, packet);
@@ -79,7 +87,7 @@ internal object GasParticles {
     fun clientReceiveUpdate(packet : PacketByteBuf) {
         val chunkPos = packet.readChunkPos();
         if (! this.chunks.containsKey(chunkPos)) {return;}
-        val chunk = hashMapOf<BlockPos, WorldParticleBuilder>();
+        val chunk = hashMapOf<BlockPos, Pair<WorldParticleBuilder, Vector3d>>();
         val count = packet.readInt();
         for (i in 0..<count) {
             val pos     = packet.readBlockPos();
@@ -90,33 +98,33 @@ internal object GasParticles {
             val motionX = packet.readDouble();
             val motionY = packet.readDouble();
             val motionZ = packet.readDouble();
-            chunk[pos] = WorldParticleBuilder.create(LodestoneParticles.SMOKE_PARTICLE)
-                .setColorData(ColorParticleData
-                    .create(
-                        red, green, blue,
-                        0.0f, 0.0f, 0.0f
+            chunk[pos] = Pair(
+                WorldParticleBuilder.create(LodestoneParticles.WISP_PARTICLE)
+                    .setColorData(ColorParticleData
+                        .create(
+                            red, green, blue,
+                            0.0f, 0.0f, 0.0f
+                        )
+                        .build()
                     )
-                    .build()
-                )
-                .setTransparencyData(GenericParticleData
-                    .create(0.0f, alpha, 0.0f)
-                    .setEasing(Easing.QUAD_OUT, Easing.LINEAR)
-                    .build()
-                )
-                .setScaleData(GenericParticleData
-                    .create(0.5f, 0.75f + Random.Default.nextFloat() * 0.25f, 0.75f)
-                    .setEasing(Easing.QUAD_OUT, Easing.LINEAR)
-                    .build()
-                )
-                .setSpinData(SpinParticleData
-                    .create(Random.Default.nextFloat() * 0.03125f - 0.015625f, Random.Default.nextFloat() * 0.03125f - 0.015625f)
-                    .setEasing(Easing.LINEAR)
-                    .build()
-                )
-                .setMotion(motionX, motionY, motionZ)
-                .disableNoClip()
-                .setRandomOffset(1.0)
-                .setLifetime(5);
+                    .setTransparencyData(GenericParticleData
+                        .create(0.0f, alpha, 0.0f)
+                        .setEasing(Easing.QUAD_OUT, Easing.LINEAR)
+                        .build()
+                    )
+                    .setScaleData(GenericParticleData
+                        .create(0.5f, 0.75f + Random.Default.nextFloat() * 0.25f, 0.75f)
+                        .setEasing(Easing.QUAD_OUT, Easing.LINEAR)
+                        .build()
+                    )
+                    .setSpinData(SpinParticleData
+                        .create(Random.Default.nextFloat() * 0.03125f - 0.015625f, Random.Default.nextFloat() * 0.03125f - 0.015625f)
+                        .setEasing(Easing.LINEAR)
+                        .build()
+                    )
+                    .disableNoClip()
+                    .setRandomOffset(1.0),
+            Vector3d(motionX, motionY, motionZ));
         }
 
         this.chunks[chunkPos] = chunk;
