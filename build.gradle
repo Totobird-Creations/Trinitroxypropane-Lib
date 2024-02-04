@@ -66,11 +66,12 @@ dependencies {
 	// Lodestone Lib
 	modImplementation("com.github.cph101:Lodestonelib-fabric:v${project.version_lodestonelib}-${project.version_minecraft}") {transitive = false}
 
+	// Create
+	modImplementation("com.simibubi.create:create-fabric-${project.version_minecraft}:${project.version_create}+mc${project.version_minecraft}")
+
 
 	// ModMenu
 	modRuntimeOnly("maven.modrinth:modmenu:${project.version_modmenu}")
-	// Create
-	modRuntimeOnly("com.simibubi.create:create-fabric-${project.version_minecraft}:${project.version_create}+mc${project.version_minecraft}")
 	// Create: Interactive
 	modRuntimeOnly("maven.modrinth:interactive:${project.version_createinteractive}")
 	// Midnight Lib
@@ -78,6 +79,10 @@ dependencies {
 	// Cloth Config
 	modRuntimeOnly("maven.modrinth:cloth-config:${project.version_clothconfig}+fabric")
 
+}
+
+loom {
+	accessWidenerPath = file("src/main/resources/${project.mod_id}.accesswidener")
 }
 
 processResources {

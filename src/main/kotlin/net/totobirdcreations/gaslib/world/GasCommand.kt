@@ -1,4 +1,4 @@
-package net.totobirdcreations.gaslib.command
+package net.totobirdcreations.gaslib.world
 
 import com.mojang.brigadier.arguments.ArgumentType
 import com.mojang.brigadier.arguments.DoubleArgumentType
@@ -14,8 +14,6 @@ import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
 import net.totobirdcreations.gaslib.Mod
-import net.totobirdcreations.gaslib.world.GasRegistry
-import net.totobirdcreations.gaslib.world.GasServer
 
 
 internal object GasCommand {
@@ -29,17 +27,23 @@ internal object GasCommand {
 
     internal fun register() {
         CommandRegistrationCallback.EVENT.register { dispatcher, _, _ -> dispatcher.register(
-            literal("gas").requires {source -> source.hasPermissionLevel(2)}
+            literal("gas").requires { source -> source.hasPermissionLevel(2)}
 
-                .then(literal("modify")
-                    .then(argument("pos", BlockPosArgumentType.blockPos())
-                    .then(argument("gasId", IdentifierArgumentType.identifier()).suggests(GAS_IDS)
-                    .then(argument("amount", DoubleArgumentType.doubleArg())
+                .then(
+                    literal("modify")
+                    .then(
+                        argument("pos", BlockPosArgumentType.blockPos())
+                    .then(
+                        argument("gasId", IdentifierArgumentType.identifier()).suggests(GAS_IDS)
+                    .then(
+                        argument("amount", DoubleArgumentType.doubleArg())
                     .executes { ctx -> modify(ctx); 1 }
                 ) ) ) )
 
-                .then(literal("purge")
-                    .then(argument("gasId", IdentifierArgumentType.identifier()).suggests(GAS_IDS)
+                .then(
+                    literal("purge")
+                    .then(
+                        argument("gasId", IdentifierArgumentType.identifier()).suggests(GAS_IDS)
                         .executes { ctx -> purge(ctx, true); 1 }
                     )
                     .executes { ctx -> purge(ctx, false); 1 }

@@ -19,9 +19,9 @@ import java.util.concurrent.ConcurrentHashMap
 
 internal object GasServer : ChunkComponentInitializer {
 
-    private val COMPONENT : ComponentKey<GasChunk> = ComponentRegistry.getOrCreate(Mod.id("gas_chunk"), GasChunk::class.java);
+    internal val COMPONENT : ComponentKey<GasChunk> = ComponentRegistry.getOrCreate(Mod.id("gas_chunk"), GasChunk::class.java);
     override fun registerChunkComponentFactories(registry : ChunkComponentFactoryRegistry) {
-        registry.register(COMPONENT) { chunk -> GasChunk(null, chunk) };
+        registry.register(COMPONENT, GasChunk::class.java) { chunk -> GasChunk(null, chunk) };
     }
 
 
@@ -57,7 +57,7 @@ internal object GasServer : ChunkComponentInitializer {
      * **See [net.totobirdcreations.gaslib.api.GasAPI.modifyAmount]**
      */
     fun modifyAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant, amount : Double) : Boolean {
-        assert(GasRegistry.registeredGases.contains(gas.id)) { -> "Gas `${gas.id}` is not registered." };
+        assert(GasRegistry.isGasRegistered(gas)) { -> "Gas variant `${gas.id}` is not registered." };
         val gasWorld = this.gasWorlds[world.dimensionKey.value] ?: return false;
         return if (amount > 0.0) {
             gasWorld.addAmount(ChunkPos(pos), pos, gas, amount)
@@ -70,7 +70,7 @@ internal object GasServer : ChunkComponentInitializer {
      * **See [net.totobirdcreations.gaslib.api.GasAPI.getPressure]**
      */
     fun getPressure(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant? = null) : Double? {
-        assert(gas == null || GasRegistry.registeredGases.contains(gas.id)) { -> "Gas `${gas!!.id}` is not registered." };
+        assert(gas == null || GasRegistry.isGasRegistered(gas)) { -> "Gas variant `${gas!!.id}` is not registered." };
         val gasWorld = this.gasWorlds[world.dimensionKey.value] ?: return null;
         return gasWorld.getPressure(ChunkPos(pos), pos, gas);
     }
@@ -78,7 +78,7 @@ internal object GasServer : ChunkComponentInitializer {
      * **See [net.totobirdcreations.gaslib.api.GasAPI.getAmount]**
      */
     fun getAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant) : Double? {
-        assert(GasRegistry.registeredGases.contains(gas.id)) { -> "Gas `${gas.id}` is not registered." };
+        assert(GasRegistry.isGasRegistered(gas)) { -> "Gas variant `${gas.id}` is not registered." };
         val gasWorld = this.gasWorlds[world.dimensionKey.value] ?: return null;
         return gasWorld.getAmount(ChunkPos(pos), pos, gas);
     }
@@ -94,7 +94,7 @@ internal object GasServer : ChunkComponentInitializer {
      * **See [net.totobirdcreations.gaslib.api.GasAPI.queuePurgeAllLoaded]**
      */
     fun queuePurgeAllLoaded(world : ServerWorld, gas : AbstractGasVariant? = null) {
-        assert(gas == null || GasRegistry.registeredGases.contains(gas.id)) { -> "Gas `${gas!!.id}` is not registered." };
+        assert(gas == null || GasRegistry.isGasRegistered(gas)) { -> "Gas variant `${gas!!.id}` is not registered." };
         val gasWorld = this.gasWorlds[world.dimensionKey.value] ?: return;
         gasWorld.queuePurgeAllLoaded(gas);
     }

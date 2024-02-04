@@ -38,6 +38,8 @@
 			}
 		]
 	},
+	"accessWidener": "${mod_id}.accesswidener",
+
 	"depends": {
 
 		"java"                   : ">=17",

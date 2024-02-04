@@ -1,9 +1,13 @@
 package net.totobirdcreations.gaslib.api
 
+import net.fabricmc.api.EnvType
+import net.fabricmc.api.Environment
+import net.minecraft.client.world.ClientWorld
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
+import net.totobirdcreations.gaslib.util.RGBA
 import net.totobirdcreations.gaslib.world.GasServer
 import org.jetbrains.annotations.ApiStatus
 import org.joml.Vector3d
@@ -54,8 +58,10 @@ abstract class AbstractGasVariant(
 
     /**
      * Called every gas update for each block containing this gas.
+     *
+     * Return the colour and alpha of the gas, or `null` if this gas should be invisible.
      */
-    open fun tick(world : ServerWorld, pos : BlockPos, velocity : Vector3d, amount : Double) {}
+    abstract fun tick(world : ServerWorld, pos : BlockPos, motion : Vector3d, amount : Double) : RGBA?;
 
 
     /**
@@ -78,7 +84,6 @@ abstract class AbstractGasVariant(
     fun getPressure(world : ServerWorld, pos : BlockPos) : Double? {
         return GasServer.getPressure(world, pos, this);
     }
-
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.getAmount]**
      */

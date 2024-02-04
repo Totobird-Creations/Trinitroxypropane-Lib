@@ -1,5 +1,6 @@
 package net.totobirdcreations.gaslib.api
 
+import net.minecraft.fluid.Fluid
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos
@@ -13,25 +14,61 @@ import org.joml.Vector3d
 object GasAPI {
 
     /**
+     * Registers a new gas variant.
+     */
+    @JvmStatic
+    fun <T : AbstractGasVariant> registerGasVariant(gas : T) {
+        GasRegistry.registerGasVariant(gas);
+    }
+    /**
+     * Returns `true` if the given gas is registered.
+     */
+    @JvmStatic
+    fun <T : AbstractGasVariant> isGasRegistered(gas : T) : Boolean {
+        return GasRegistry.isGasRegistered(gas);
+    }
+    /**
      * Returns the gas variant object from its id, if it exists.
      */
     @JvmStatic
-    fun getRegisteredGas(gasId : Identifier) : AbstractGasVariant? {
+    fun getRegisteredGasVariant(gasId : Identifier) : AbstractGasVariant? {
         return GasRegistry.getRegisteredGas(gasId);
     }
     /**
      * Returns a `Collection` of the ids of all registered gas variants.
      */
     @JvmStatic
-    fun getRegisteredGasIds() : Collection<Identifier> {
+    fun getRegisteredGasVariantIds() : Collection<Identifier> {
         return GasRegistry.getRegisteredGasIds();
     }
+
     /**
-     * Registers a new gas variant.
+     * Register that a fluid is burnable to turn into a gas.
      */
     @JvmStatic
-    fun <T : AbstractGasVariant> register(gas : T) {
-        GasRegistry.register(gas);
+    fun <T : Fluid, G : AbstractGasVariant> registerBurnableFluid(fluid : T, gas : G, multiplier : Double = 1.0) {
+        GasRegistry.registerBurnableFluid(fluid, gas, multiplier);
+    }
+    /**
+     * Returns `true` if there are any gas variants tied to the given fluid.
+     */
+    @JvmStatic
+    fun <T : Fluid> isBurnableFluidRegistered(fluid : T) : Boolean {
+        return GasRegistry.isBurnableFluidRegistered(fluid);
+    }
+    /**
+     * Returns the gas variant object(s) tied to the given fluid.
+     */
+    @JvmStatic
+    fun <T : Fluid> getRegisteredBurnableFluidGasVariant(fluid : T) : Collection<Pair<AbstractGasVariant, Double>> {
+        return GasRegistry.getRegisteredBurnableFluidGasVariant(fluid);
+    }
+    /**
+     * Returns all fluids which have a gas variant tied to them.
+     */
+    @JvmStatic
+    fun getRegisteredBurnableFluids() : Collection<Fluid> {
+        return GasRegistry.getRegisteredBurnableFluids();
     }
 
     /**

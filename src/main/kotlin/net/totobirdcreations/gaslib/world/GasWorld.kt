@@ -1,7 +1,5 @@
 package net.totobirdcreations.gaslib.world
 
-import kotlinx.atomicfu.AtomicInt
-import kotlinx.coroutines.sync.Mutex
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos

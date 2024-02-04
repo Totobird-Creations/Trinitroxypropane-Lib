@@ -4,20 +4,25 @@ import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.ChunkPos
 import net.minecraft.util.math.Direction
 import net.totobirdcreations.gaslib.Mod
+import net.totobirdcreations.gaslib.util.RGBA
 import org.joml.Vector3d
 import kotlin.math.absoluteValue
+import kotlin.math.pow
+import kotlin.math.sign
 
 
 private const val MAX_VOLUME_PER_BLOCK : Double = 1.0;
 
-private const val MAX_VELOCITY : Double = 1.0;
+internal const val MAX_MOTION : Double = 100.0;
 
 
 internal fun GasChunk.tick(gasWorld : GasWorld) {
     this.gasWorld = gasWorld;
-    var save = false;
+    var save   = false;
+    val blocks = mutableListOf<GasParticles.GasParticlesBlock>();
     for ((pos, block) in this.gasBlocks.entries.shuffled()) {
-        val nextVelocity = Vector3d();
+        var colour : RGBA? = null;
+        val nextMotion     = Vector3d();
 
         val totalPressure = block.gases.entries.sumOf { (gas, amount) -> amount * gas.volumePerAmount(gasWorld.world, pos) };
         // Calculate how much of the gas needs to be forced out to neighboring blocks.
@@ -48,30 +53,40 @@ internal fun GasChunk.tick(gasWorld : GasWorld) {
 
             // Calculate what proportion of the gas being pushed out should go in each direction.
             val dirsWeights = mutableMapOf(*dirsInfos.mapNotNull { (dir, dirInfo) ->
-                var dirWeight = 0.0;
+                // All directions should get at least some (unless blocked).
+                var dirWeight = 500.0;
 
                 // The lower the target block pressure is in comparison to the source block pressure, the more weight.
-                dirWeight += (totalPressure - dirInfo.pressure).coerceAtLeast(0.0);
+                var pressureDiff = totalPressure - dirInfo.pressure;
+                pressureDiff = pressureDiff.coerceAtLeast(0.0).pow(5.0) * 10.0;
+                dirWeight += pressureDiff;
+                nextMotion.add(
+                    dir.offsetX.toDouble() * pressureDiff * 1000.0,
+                    dir.offsetY.toDouble() * pressureDiff * 1000.0,
+                    dir.offsetZ.toDouble() * pressureDiff * 1000.0
+                );
 
-                // Movement with the velocity has a higher weight.
-                dirWeight += (block.motion.dot(
+                // Movement along the motion has a higher weight.
+                val veca = Vector3d(block.motion.x, block.motion.y, block.motion.z);
+                if (veca.length() > 0.0) {veca.normalize();}
+                dirWeight += (veca.dot(
                     dir.offsetX.toDouble(),
                     dir.offsetY.toDouble(),
                     dir.offsetZ.toDouble()
-                ) + 1.0).coerceAtLeast(0.0) * 2.5;
-                dirWeight += ((gasWorld.getMotion(dirInfo.chunkPos, dirInfo.blockPos) ?: Vector3d()).dot(
+                ) * 0.5 + 0.5).coerceAtLeast(0.0) * 100000.0;
+                val vecb = gasWorld.getMotion(dirInfo.chunkPos, dirInfo.blockPos) ?: Vector3d();
+                val vecc = Vector3d(vecb.x, vecb.y, vecb.z);
+                if (vecc.length() > 0.0) {vecc.normalize();}
+                dirWeight += (vecc.dot(
                     dir.offsetX.toDouble(),
                     dir.offsetY.toDouble(),
                     dir.offsetZ.toDouble()
-                ) * 3.75 + 5.0).coerceAtLeast(0.0) * 10.0;
-
-                // All directions should get at least some.
-                dirWeight += 2.5;
+                ) * 0.5 + 0.5).coerceAtLeast(0.0) * 100000.0;
 
                 // Blocked by walls.
                 dirWeight *= 1.0 - gas.transferResistance(gasWorld.world, pos, dir);
 
-                if (dirWeight > 0.0) {Pair(dir, dirWeight.coerceAtLeast(0.0))} else {null}
+                if (dirWeight > 0.0) {Pair(dir, dirWeight)} else {null}
             }.toTypedArray());
             val totalDirsWeights = dirsWeights.values.sum();
 
@@ -89,10 +104,10 @@ internal fun GasChunk.tick(gasWorld : GasWorld) {
                     gasWorld.addAmount(dirInfo.chunkPos, dirInfo.blockPos, gas, amountToTransfer, shouldSave = false)
                 ) {
                     nextAmount -= amountToTransfer;
-                    nextVelocity.add(
-                        dir.offsetX.toDouble() * amountToTransfer * 10.0,
-                        dir.offsetY.toDouble() * amountToTransfer * 10.0,
-                        dir.offsetZ.toDouble() * amountToTransfer * 10.0
+                    nextMotion.add(
+                        dir.offsetX.toDouble() * amountToTransfer * 0.25,
+                        dir.offsetY.toDouble() * amountToTransfer * 0.25,
+                        dir.offsetZ.toDouble() * amountToTransfer * 0.25
                     );
                 }
 
@@ -105,31 +120,41 @@ internal fun GasChunk.tick(gasWorld : GasWorld) {
                 save = true;
             } else {
                 block.gases[gas] = nextAmount;
+                if ((nextAmount - amount).absoluteValue >= 0.001) {
+                    save = true;
+                }
                 try {
-                    gas.tick(gasWorld.world, pos, block.motion, nextAmount);
+                    val c = gas.tick(gasWorld.world, pos, block.motion, nextAmount);
+                    if (c != null) { colour = colour?.mix(c) ?: c; }
                 } catch (e : Exception) {
                     Mod.LOGGER.error("Ticking gas VARIANT ${gas.id} at BLOCK ${pos} in CHUNK ${this.chunkPos} in WORLD ${this.gasWorld?.id} failed:");
                     Mod.LOGGER.error("  ${e}");
                 }
-                if ((nextAmount - amount).absoluteValue > 0.0025) {
-                    save = true;
-                }
             }
         }
 
-        val nextVelocityLen = nextVelocity.length();
-        if (nextVelocityLen > MAX_VELOCITY) {
-            nextVelocity.mul(MAX_VELOCITY / nextVelocityLen);
+        val nextMotionLen = nextMotion.length();
+        if (nextMotionLen > MAX_MOTION) {
+            nextMotion.normalize().mul(MAX_MOTION);
         }
-        if (block.motion.distanceSquared(nextVelocity) > 0.01) {
-            nextVelocity.sub(block.motion);
-            nextVelocity.mul(0.75);
-            block.motion.add(nextVelocity);
+        if (block.motion.distanceSquared(nextMotion) > 0.01) {
+            nextMotion.sub(block.motion);
+            nextMotion.mul(0.5);
+            block.motion.add(nextMotion);
             save = true;
         }
+        if (colour != null && colour.a > 0.0) {
+            blocks.add(GasParticles.GasParticlesBlock(
+                pos,
+                colour,
+                block.motion
+            ));
+        }
+
     }
     if (save) {
         this.chunk.setNeedsSaving(true);
+        GasParticles.sendUpdate(gasWorld.world, this.chunkPos, blocks);
     }
 }
 

@@ -18,7 +18,8 @@ import java.util.concurrent.ConcurrentHashMap
 internal class GasChunk(
     var gasWorld : GasWorld?,
     val chunk    : Chunk
-) : Component {
+) : Component
+{
 
     val chunkPos : ChunkPos get() = this.chunk.pos;
 
@@ -152,7 +153,7 @@ internal class GasChunk(
                     for (idStr in gasesNbt.keys) {
                         try {
                             val id  = Identifier(idStr);
-                            val gas = GasAPI.getRegisteredGas(id);
+                            val gas = GasAPI.getRegisteredGasVariant(id);
                             if (gas != null) {
                                 if (gasesNbt.contains(idStr, doubleType)) {
                                     gases[gas] = gasesNbt.getDouble(idStr);
