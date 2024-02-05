@@ -15,8 +15,6 @@ import kotlin.properties.Delegates
 
 private const val MAX_VOLUME_PER_BLOCK : Double = 1.0;
 
-internal const val MAX_MOTION : Double = 100.0;
-
 
 internal fun GasChunk.tick(gasWorld : GasWorld) {
     this.gasWorld = gasWorld;
@@ -27,13 +25,11 @@ internal fun GasChunk.tick(gasWorld : GasWorld) {
         val nextMotion     = Vector3d();
 
         val pressures = hashMapOf<AbstractGasVariant, Double>();
-        var pressure = block.gases.entries.sumOf { (gas, amount) ->
+        val pressure = block.gases.entries.sumOf { (gas, amount) ->
             val p = amount * gas.volumePerAmount(gasWorld.world, pos);
             pressures[gas] = p;
             p
         };
-        // Calculate how much of the gas needs to be forced out to neighboring blocks.
-        val totalAmountToForceTransfer = (pressure - MAX_VOLUME_PER_BLOCK).coerceAtLeast(0.0);
 
         // Get info about neighboring blocks and decide how much of the gas each direction should get.
         var dirsPressureDiffSum = 0.0;
@@ -63,11 +59,35 @@ internal fun GasChunk.tick(gasWorld : GasWorld) {
                 save = true;
                 continue;
             }
+            var nextAmount = amount;
+
+            // MAIN OPERATIONS
+
+
+            // If there was enough change, save it.
+            // If it hasn't changed much, don't bother.
+            if (nextAmount < dissipateThreshold) {
+                block.gases.remove(gas);
+                save = true;
+            } else {
+                block.gases[gas] = nextAmount;
+                if ((nextAmount - amount).absoluteValue >= 0.001) {
+                    save = true;
+                }
+                try {
+                    // Tick the gas.
+                    val c = gas.tick(gasWorld.world, pos, block.motion, nextAmount);
+                    if (c != null) { colour = colour?.mix(c) ?: c; }
+                } catch (e : Exception) {
+                    Mod.LOGGER.error("Ticking gas VARIANT ${gas.id} at BLOCK ${pos} in CHUNK ${this.chunkPos} in WORLD ${this.gasWorld?.id} failed:");
+                    Mod.LOGGER.error("  ${e}");
+                }
+            }
         }
 
         val nextMotionLen = nextMotion.length();
-        if (nextMotionLen > MAX_MOTION) {
-            nextMotion.normalize().mul(MAX_MOTION);
+        if (nextMotionLen > 1.0) {
+            nextMotion.normalize();
         }
         if (block.motion.distanceSquared(nextMotion) > 0.01) {
             nextMotion.sub(block.motion);

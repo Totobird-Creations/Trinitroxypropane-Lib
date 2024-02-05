@@ -73,9 +73,9 @@ internal object GasParticles {
             packet.writeFloat    (block.colour.g.coerceIn(0.0f, 1.0f));
             packet.writeFloat    (block.colour.b.coerceIn(0.0f, 1.0f));
             packet.writeFloat    (block.colour.a.coerceIn(0.0f, 1.0f));
-            packet.writeDouble   ((block.motion.x / MAX_MOTION * 100.0).coerceIn(-1.0, 1.0));
-            packet.writeDouble   ((block.motion.y / MAX_MOTION * 100.0).coerceIn(-1.0, 1.0));
-            packet.writeDouble   ((block.motion.z / MAX_MOTION * 100.0).coerceIn(-1.0, 1.0));
+            packet.writeDouble   ((block.motion.x * 100.0).coerceIn(-1.0, 1.0));
+            packet.writeDouble   ((block.motion.y * 100.0).coerceIn(-1.0, 1.0));
+            packet.writeDouble   ((block.motion.z * 100.0).coerceIn(-1.0, 1.0));
         }
         for (player in players) {
             ServerPlayNetworking.send(player, SPAWN_CHANNEL, packet);

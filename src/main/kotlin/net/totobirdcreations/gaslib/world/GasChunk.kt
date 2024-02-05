@@ -27,6 +27,21 @@ internal class GasChunk(
 
 
     /**
+     * **See [net.totobirdcreations.gaslib.api.GasAPI.setAmount]**
+     */
+    fun setAmount(pos : BlockPos, gas : AbstractGasVariant, amount : Double, shouldSave : Boolean = true) : Boolean {
+        val gasBlock = this.gasBlocks[pos];
+        if (gasBlock != null) {
+            gasBlock.gases[gas] = amount;
+        } else {
+            val map = ConcurrentHashMap<AbstractGasVariant, Double>();
+            map[gas] = amount;
+            this.gasBlocks[pos] = GasBlock(map);
+        }
+        if (shouldSave) { this.chunk.setNeedsSaving(true); }
+        return true;
+    }
+    /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.modifyAmount]**
      */
     fun addAmount(pos : BlockPos, gas : AbstractGasVariant, amount : Double, shouldSave : Boolean = true) : Boolean {
@@ -59,7 +74,12 @@ internal class GasChunk(
         if (shouldSave) { this.chunk.setNeedsSaving(true); }
         return true;
     }
-
+    /**
+     * **See [net.totobirdcreations.gaslib.api.GasAPI.getAmount]**
+     */
+    fun getAmount(pos : BlockPos, gas : AbstractGasVariant) : Double {
+        return this.gasBlocks[pos]?.gases?.get(gas) ?: 0.0;
+    }
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.getPressure]**
      */
@@ -74,11 +94,22 @@ internal class GasChunk(
         val world = this.gasWorld?.world ?: return null;
         return this.getAmount(pos, gas) * gas.volumePerAmount(world, pos);
     }
+
     /**
-     * **See [net.totobirdcreations.gaslib.api.GasAPI.getAmount]**
+     * **See [net.totobirdcreations.gaslib.api.GasAPI.setMotion]**
      */
-    fun getAmount(pos : BlockPos, gas : AbstractGasVariant) : Double {
-        return this.gasBlocks[pos]?.gases?.get(gas) ?: 0.0;
+    fun setMotion(pos : BlockPos, vec : Vector3d) : Boolean {
+        val gasBlock = this.gasBlocks[pos] ?: return false;
+        gasBlock.motion.set(vec);
+        return true;
+    }
+    /**
+     * **See [net.totobirdcreations.gaslib.api.GasAPI.modifyMotion]**
+     */
+    fun modifyMotion(pos : BlockPos, vec : Vector3d) : Boolean {
+        val gasBlock = this.gasBlocks[pos] ?: return false;
+        gasBlock.motion.add(vec);
+        return true;
     }
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.getMotion]**

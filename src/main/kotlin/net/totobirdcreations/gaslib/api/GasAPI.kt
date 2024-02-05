@@ -80,7 +80,13 @@ object GasAPI {
     fun modifyAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant, amount : Double) : Boolean {
         return GasServer.modifyAmount(world, pos, gas, amount);
     }
-
+    /**
+     * Gets the amount of this gas variant at a given position and world.
+     */
+    @JvmStatic
+    fun getAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant) : Double? {
+        return GasServer.getAmount(world, pos, gas);
+    }
     /**
      * Gets the amount times volumePerAmount of this gas variant (or all) at a given position and world.
      */
@@ -88,12 +94,20 @@ object GasAPI {
     fun getPressure(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant? = null) : Double? {
         return GasServer.getPressure(world, pos, gas);
     }
+
     /**
-     * Gets the amount of this gas variant at a given position and world.
+     * Sets the 'motion' of this gas variant at a given position and world.
      */
     @JvmStatic
-    fun getAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant) : Double? {
-        return GasServer.getAmount(world, pos, gas);
+    fun setMotion(world : ServerWorld, pos : BlockPos, vec : Vector3d) : Boolean {
+        return GasServer.setMotion(world, pos, vec);
+    }
+    /**
+     * Adds to the 'motion' of this gas variant at a given position and world.
+     */
+    @JvmStatic
+    fun modifyMotion(world : ServerWorld, pos : BlockPos, vec : Vector3d) : Boolean {
+        return GasServer.modifyMotion(world, pos, vec);
     }
     /**
      * Gets the 'motion' of this gas variant at a given position and world.

@@ -54,6 +54,19 @@ internal object GasServer : ChunkComponentInitializer {
 
 
     /**
+     * **See [net.totobirdcreations.gaslib.api.GasAPI.setAmount]**
+     */
+    fun setAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant, amount : Double) : Boolean {
+        assert(GasRegistry.isGasRegistered(gas)) { -> "Gas variant `${gas.id}` is not registered." };
+        assert(amount.isFinite() && amount >= 0.0) { -> "Gas amount must be a finite, positive number." };
+        val gasWorld = this.gasWorlds[world.dimensionKey.value] ?: return false;
+        return if (amount > 0.0) {
+            gasWorld.addAmount(ChunkPos(pos), pos, gas, amount)
+        } else if (amount < 0.0) {
+            gasWorld.removeAmount(ChunkPos(pos), pos, gas, -amount)
+        } else {true};
+    }
+    /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.modifyAmount]**
      */
     fun modifyAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant, amount : Double) : Boolean {
@@ -65,7 +78,14 @@ internal object GasServer : ChunkComponentInitializer {
             gasWorld.removeAmount(ChunkPos(pos), pos, gas, -amount)
         } else {true};
     }
-
+    /**
+     * **See [net.totobirdcreations.gaslib.api.GasAPI.getAmount]**
+     */
+    fun getAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant) : Double? {
+        assert(GasRegistry.isGasRegistered(gas)) { -> "Gas variant `${gas.id}` is not registered." };
+        val gasWorld = this.gasWorlds[world.dimensionKey.value] ?: return null;
+        return gasWorld.getAmount(ChunkPos(pos), pos, gas);
+    }
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.getPressure]**
      */
@@ -74,13 +94,20 @@ internal object GasServer : ChunkComponentInitializer {
         val gasWorld = this.gasWorlds[world.dimensionKey.value] ?: return null;
         return gasWorld.getPressure(ChunkPos(pos), pos, gas);
     }
+
     /**
-     * **See [net.totobirdcreations.gaslib.api.GasAPI.getAmount]**
+     * **See [net.totobirdcreations.gaslib.api.GasAPI.setMotion]**
      */
-    fun getAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant) : Double? {
-        assert(GasRegistry.isGasRegistered(gas)) { -> "Gas variant `${gas.id}` is not registered." };
-        val gasWorld = this.gasWorlds[world.dimensionKey.value] ?: return null;
-        return gasWorld.getAmount(ChunkPos(pos), pos, gas);
+    fun setMotion(world : ServerWorld, pos : BlockPos, vec : Vector3d) : Boolean {
+        val gasWorld = this.gasWorlds[world.dimensionKey.value] ?: return false;
+        return gasWorld.setMotion(ChunkPos(pos), pos, vec);
+    }
+    /**
+     * **See [net.totobirdcreations.gaslib.api.GasAPI.modifyMotion]**
+     */
+    fun modifyMotion(world : ServerWorld, pos : BlockPos, vec : Vector3d) : Boolean {
+        val gasWorld = this.gasWorlds[world.dimensionKey.value] ?: return false;
+        return gasWorld.modifyMotion(ChunkPos(pos), pos, vec);
     }
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.getAmount]**

@@ -27,6 +27,10 @@ object SuperheatedGas : AbstractGasVariant(Identifier("c", "superheated")) {
         return 0.0001;
     }
 
+    override fun transferProportion(world: ServerWorld, pos: BlockPos): Double {
+        return 1.0;
+    }
+
     override fun tick(world: ServerWorld, pos: BlockPos, motion: Vector3d, amount: Double): RGBA {
         val amountF = amount.toFloat();
         return RGBA.ORANGE.withAlpha((0.125f * cbrt(1.5f * amountF - 1.0f) + 0.125f + 0.1f * amountF).coerceAtLeast(0.03125f));
