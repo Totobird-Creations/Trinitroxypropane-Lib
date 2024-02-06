@@ -10,89 +10,136 @@ import kotlin.math.absoluteValue
 import kotlin.math.pow
 
 
+private const val MAX_VOLUME_PER_BLOCK : Double = 1.0;
+
+internal const val MAX_MOTION : Double = 100.0;
+
+
 internal fun GasChunk.tick(gasWorld : GasWorld) {
     this.gasWorld = gasWorld;
-    var save       = false;
-    val particles  = mutableListOf<GasParticles.GasParticlesBlock>();
-    val blockCache = mutableMapOf<BlockPos, CachedBlock>();
-
+    var save   = false;
+    val blocks = mutableListOf<GasParticles.GasParticlesBlock>();
     for ((pos, block) in this.gasBlocks.entries.shuffled()) {
-        // Get and clean up some data.
-        if (block.motion.length() > 1.0) {
-            block.motion.normalize();
-        }
-        val nextMotion = Vector3d();
+        var colour : RGBA? = null;
+        val nextMotion     = Vector3d();
 
-        if (block.gases.isNotEmpty()) {
-            var colour : RGBA? = null;
+        val totalPressure = block.gases.entries.sumOf { (gas, amount) -> amount * gas.volumePerAmount(gasWorld.world, pos) };
+        // Calculate how much of the gas needs to be forced out to neighboring blocks.
+        val totalAmountToForceTransfer = (totalPressure - MAX_VOLUME_PER_BLOCK).coerceAtLeast(0.0);
 
-            val localBlock = blockCache.getOrPut(this, pos) ?: continue;
-            val neighborBlocks = mutableMapOf(*Direction.entries.mapNotNull { dir -> Pair(dir,
-                blockCache.getOrPut(this, pos.offset(dir)) ?: return@mapNotNull null)
-            }.toTypedArray());
-            val neighborPressureWeights = mutableMapOf(*neighborBlocks.mapNotNull { (dir, neighborBlock) ->
-                val pressureDiff = localBlock.pressure - neighborBlock.pressure;
-                if (pressureDiff > 0.0) { Pair(dir, pressureDiff) } else { null }
-            }.toTypedArray());
+        // Get info about neighboring blocks.
+        val dirsInfos = mutableMapOf(*Direction.entries.shuffled().mapNotNull { dir ->
+            val dirBlockPos = pos.offset(dir);
+            val dirChunkPos = ChunkPos(dirBlockPos);
+            Pair(dir, DirNeighborInfo(
+                dirBlockPos,
+                dirChunkPos,
+                gasWorld.getPressure(dirChunkPos, dirBlockPos) ?: 0.0
+            ))
+        }.toTypedArray());
 
-
-            // Handle each gas individually.
-            for ((gas, amount) in block.gases) {
-                // If gas is thin enough, destroy it.
-                val dissipateThreshold = gas.dissipateThreshold;
-                if (amount < dissipateThreshold) {
-                    block.gases.remove(gas);
-                    save = true;
-                    continue;
-                }
-                var nextAmount = amount;
-
-                val neighborTransferWeights = mutableMapOf(*neighborPressureWeights.mapNotNull { (dir, weight) ->
-                    val transferWeight1  = weight * gas.transferResistance(gasWorld.world, pos, dir);
-                    val transferWeight2 = transferWeight1 * (localBlock.motionNormalised.dot(neighborBlocks[dir]!!.motionNormalised) * 0.25 + 0.75).coerceIn(0.5, 1.0);
-                    if (transferWeight2 > 0.0) { Pair(dir, Pair(transferWeight1, transferWeight2)) } else { null }
-                }.toTypedArray());
-                val neighborTransferWeight1sSum = neighborTransferWeights.values.sumOf { (transferWeight1, _) -> transferWeight1 };
-                val neighborTransferWeight2sSum = neighborTransferWeights.values.sumOf { (_, transferWeight2) -> transferWeight2 };
-
-                // Transfer gas to neighbors, split based on previous calculations.
-                for ((dir, transferWeight) in neighborTransferWeights) {
-                    val (transferWeight1, transferWeight2) = transferWeight;
-                    val neighborBlock = neighborBlocks[dir]!!;
-                    val addMotion = amount * transferWeight1 / neighborTransferWeight1sSum;
-                    neighborBlock.gasBlock.motion.add(
-                        dir.offsetX * addMotion * 0.05,
-                        dir.offsetY * addMotion * 0.05,
-                        dir.offsetZ * addMotion * 0.05
-                    )
-                    val amountToTransfer = amount * transferWeight2 / neighborTransferWeight2sSum;
-                    neighborBlock.gasBlock.addAmount(gas, amountToTransfer, shouldSave = ! neighborBlock.sameChunk);
-                    nextAmount -= amountToTransfer;
-                }
-
-                // If there was enough change, save it.
-                // If it hasn't changed much, don't bother.
-                if (nextAmount < dissipateThreshold) {
-                    block.gases.remove(gas);
-                    save = true;
-                } else {
-                    block.gases[gas] = nextAmount;
-                    if ((nextAmount - amount).absoluteValue >= 0.001) {
-                        save = true;
-                    }
-                    try {
-                        // Tick the gas.
-                        val c = gas.tick(gasWorld.world, pos, block.motion, nextAmount);
-                        if (c != null) { colour = colour?.mix(c) ?: c; }
-                    } catch (e : Exception) {
-                        ModMain.LOGGER.error("Ticking gas VARIANT ${gas.id} at BLOCK ${pos} in CHUNK ${this.chunkPos} in WORLD ${this.gasWorld?.id} failed:");
-                        ModMain.LOGGER.error("  ${e}");
-                    }
-                }
+        // Handle each gas individually.
+        for ((gas, amount) in block.gases) {
+            // If gas is thin enough, destroy it.
+            val dissipateThreshold = gas.dissipateThreshold;
+            if (amount < dissipateThreshold) {
+                block.gases.remove(gas);
+                save = true;
+                continue;
             }
 
+            val pressure = gas.volumePerAmount(gasWorld.world, pos) * amount;
+
+            // Calculate what proportion of the gas being pushed out should go in each direction.
+            val dirsWeights = mutableMapOf(*dirsInfos.mapNotNull { (dir, dirInfo) ->
+                // All directions should get at least some (unless blocked).
+                var dirWeight = 500.0;
+
+                // The lower the target block pressure is in comparison to the source block pressure, the more weight.
+                var pressureDiff = totalPressure - dirInfo.pressure;
+                pressureDiff = pressureDiff.coerceAtLeast(0.0).pow(5.0) * 10.0;
+                dirWeight += pressureDiff;
+                nextMotion.add(
+                    dir.offsetX.toDouble() * pressureDiff * 1000.0,
+                    dir.offsetY.toDouble() * pressureDiff * 1000.0,
+                    dir.offsetZ.toDouble() * pressureDiff * 1000.0
+                );
+
+                // Movement along the motion has a higher weight.
+                val veca = gasWorld.getMotion(dirInfo.chunkPos, dirInfo.blockPos) ?: Vector3d();
+                val vecb = Vector3d(veca.x, veca.y, veca.z);
+                if (vecb.length() > 0.0) {vecb.normalize();}
+                dirWeight += (vecb.dot(
+                    dir.offsetX.toDouble(),
+                    dir.offsetY.toDouble(),
+                    dir.offsetZ.toDouble()
+                ) * 0.5 + 0.5).coerceAtLeast(0.0) * 10000.0;
+
+                // Blocked by walls.
+                dirWeight *= gas.transferResistance(gasWorld.world, pos, dir);
+
+                if (dirWeight > 0.0) {Pair(dir, dirWeight)} else {null}
+            }.toTypedArray());
+            val totalDirsWeights = dirsWeights.values.sum();
+
+            // Calculate how much of the gas is being pushed out.
+            val amountToForceTransfer = totalAmountToForceTransfer * (pressure / totalPressure);
+            val totalAmountToTransfer = amountToForceTransfer + (amount - amountToForceTransfer) * gas.transferProportion(gasWorld.world, pos);
+
+            // Transfer gas to neighboring blocks depending on the weights calculated.
+            var nextAmount = amount;
+            for ((dir, dirWeight) in dirsWeights) {
+                val dirInfo = dirsInfos[dir]!!;
+                val amountToTransfer = dirWeight / totalDirsWeights * totalAmountToTransfer;
+
+                if (
+                    gasWorld.addAmount(dirInfo.chunkPos, dirInfo.blockPos, gas, amountToTransfer, shouldSave = false)
+                ) {
+                    nextAmount -= amountToTransfer;
+                    nextMotion.add(
+                        dir.offsetX.toDouble() * amountToTransfer * 0.25,
+                        dir.offsetY.toDouble() * amountToTransfer * 0.25,
+                        dir.offsetZ.toDouble() * amountToTransfer * 0.25
+                    );
+                }
+
+            }
+
+            // If gas is thin enough, destroy it.
+            // If enough of a change was made, queue it for saving.
+            if (nextAmount < dissipateThreshold) {
+                block.gases.remove(gas);
+                save = true;
+            } else {
+                block.gases[gas] = nextAmount;
+                if ((nextAmount - amount).absoluteValue >= 0.001) {
+                    save = true;
+                }
+                try {
+                    val c = gas.tick(gasWorld.world, pos, block.motion, nextAmount);
+                    if (c != null) { colour = colour?.mix(c) ?: c; }
+                } catch (e : Exception) {
+                    ModMain.LOGGER.error("Ticking gas VARIANT ${gas.id} at BLOCK ${pos} in CHUNK ${this.chunkPos} in WORLD ${this.gasWorld?.id} failed:");
+                    ModMain.LOGGER.error("  ${e}");
+                }
+            }
+        }
+
+        if (block.gases.isEmpty()) {
+            block.motion.zero();
+        } else {
+            val nextMotionLen = nextMotion.length();
+            if (nextMotionLen > MAX_MOTION) {
+                nextMotion.normalize().mul(MAX_MOTION);
+            }
+            if (block.motion.distanceSquared(nextMotion) > 0.01) {
+                nextMotion.sub(block.motion);
+                nextMotion.mul(0.5);
+                block.motion.add(nextMotion);
+                save = true;
+            }
             if (colour != null && colour.a > 0.0) {
-                particles.add(GasParticles.GasParticlesBlock(
+                blocks.add(GasParticles.GasParticlesBlock(
                     pos,
                     colour,
                     block.motion
@@ -100,44 +147,17 @@ internal fun GasChunk.tick(gasWorld : GasWorld) {
             }
         }
 
-        val nextMotionLen = nextMotion.length();
-        if (nextMotionLen > 1.0) {
-            nextMotion.normalize();
-        }
-        if (block.motion.distanceSquared(nextMotion) > 0.01) {
-            nextMotion.sub(block.motion);
-            nextMotion.mul(0.25);
-            block.motion.add(nextMotion);
-            save = true;
-        }
-
     }
     if (save) {
         this.chunk.setNeedsSaving(true);
-        GasParticles.sendUpdate(gasWorld.world, this.chunkPos, particles);
+        GasParticles.sendUpdate(gasWorld.world, this.chunkPos, blocks);
     }
 }
 
 
 // Basically just a tuple.
-private data class CachedBlock(
-    val sameChunk        : Boolean,
-    val gasBlock         : GasBlock,
-    val pressure         : Double,
-    val motionNormalised : Vector3d
+private data class DirNeighborInfo(
+    val blockPos : BlockPos,
+    val chunkPos : ChunkPos,
+    val pressure : Double
 );
-private fun MutableMap<BlockPos, CachedBlock>.getOrPut(gasChunk : GasChunk, pos : BlockPos) : CachedBlock? {
-    return this.getOrPut(pos) { ->
-        val chunkPos         = ChunkPos(pos);
-        val gasWorld         = gasChunk.gasWorld!!;
-        val gasBlock         = gasWorld.getOrPutBlock(chunkPos, pos) ?: return null;
-        val pressure         = gasBlock.getPressure(gasWorld.world);
-        val motionNormalised = Vector3d(gasBlock.motion.x, gasBlock.motion.y, gasBlock.motion.z).normalize();
-        CachedBlock(
-            gasChunk.chunkPos == chunkPos,
-            gasBlock,
-            pressure,
-            motionNormalised
-        )
-    };
-}

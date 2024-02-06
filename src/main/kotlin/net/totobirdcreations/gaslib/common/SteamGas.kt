@@ -27,6 +27,10 @@ object SteamGas : AbstractGasVariant(Identifier("c", "steam")) {
         return 0.0001;
     }
 
+    override fun transferProportion(world: ServerWorld, pos: BlockPos): Double {
+        return 1.0;
+    }
+
     override fun tick(world: ServerWorld, pos: BlockPos, motion: Vector3d, amount: Double): RGBA {
         return RGBA(0.75f, 0.75f, 0.75f, (0.25f * (1.0f - 1.0f / cosh(amount.toFloat() * 4.0f))).coerceAtLeast(0.0625f));
     }

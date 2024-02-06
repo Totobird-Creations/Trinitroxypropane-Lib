@@ -27,13 +27,22 @@ abstract class AbstractGasVariant(
     }
 
     /**
+     * Every tick, tries to pass this proportion of this gas to neighboring blocks.
+     *
+     * **THIS VALUE MUST FALL IN THE RANGE 0 ~ 1**
+     */
+    open fun transferProportion(world : ServerWorld, pos : BlockPos) : Double {
+        return 6.0 / 7.0;
+    }
+
+    /**
      * What proportion of this gas trying to enter a neighboring block doesn't make it.
      * Setting this to 0 will prevent any of this gas from passing into the given direction.
      * Setting this to 1 will allow all of this gas to pass into the given direction.
      *
      * The gas which failed to be transferred will be returned to the original block, and will apply force to the ship accordingly.
      *
-     * **THIS VALUE MUST BE AT LEAST 0**
+     * **THIS VALUE MUST FALL IN THE RANGE 0 ~ 1**
      */
     open fun transferResistance(world : ServerWorld, fromPos : BlockPos, inDirection : Direction) : Double {
         return if (world.getBlockState(fromPos.offset(inDirection)).isAir) { 0.875 } else { 0.0 };
