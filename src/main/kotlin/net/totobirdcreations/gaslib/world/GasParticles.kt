@@ -56,7 +56,7 @@ internal object GasParticles {
                     .spawn(world, pos.x + 0.5, pos.y + 0.5, pos.z + 0.5);
                 builder
                     .setMotion(0.0, 0.0, 0.0)
-                    .setLifetime(5)
+                    .setLifetime(10)
                     .spawn(world, pos.x + 0.5, pos.y + 0.5, pos.z + 0.5);
             }
         }
@@ -76,9 +76,9 @@ internal object GasParticles {
             packet.writeFloat    (block.colour.g.coerceIn(0.0f, 1.0f));
             packet.writeFloat    (block.colour.b.coerceIn(0.0f, 1.0f));
             packet.writeFloat    (block.colour.a.coerceIn(0.0f, 1.0f));
-            packet.writeDouble   ((block.motion.x * 10.0).coerceIn(-1.0, 1.0));
-            packet.writeDouble   ((block.motion.y * 10.0).coerceIn(-1.0, 1.0));
-            packet.writeDouble   ((block.motion.z * 10.0).coerceIn(-1.0, 1.0));
+            packet.writeDouble   ((block.motion.x * 2.5).coerceIn(-1.0, 1.0));
+            packet.writeDouble   ((block.motion.y * 2.5).coerceIn(-1.0, 1.0));
+            packet.writeDouble   ((block.motion.z * 2.5).coerceIn(-1.0, 1.0));
         }
         for (player in players) {
             ServerPlayNetworking.send(player, SPAWN_CHANNEL, packet);

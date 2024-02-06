@@ -35,7 +35,7 @@ object SuperheatedGas : AbstractGasVariant(Identifier("c", "superheated")) {
     override fun tick(world: ServerWorld, pos: BlockPos, motion: Vector3d, amount: Double): RGBA {
         //GasAPI.setAmount(world, pos, this, amount * 0.875);
         val amountF = amount.toFloat();
-        return RGBA.ORANGE.withAlpha((0.125f * cbrt(1.5f * amountF - 1.0f) + 0.125f + 0.1f * amountF).coerceAtLeast(0.03125f));
+        return RGBA.BLUE.withAlpha((0.125f * cbrt(1.5f * amountF - 1.0f) + 0.125f + 0.1f * amountF).coerceAtLeast(0.03125f));
     }
 
 }

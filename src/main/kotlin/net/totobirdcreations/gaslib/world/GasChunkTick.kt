@@ -7,6 +7,7 @@ import net.totobirdcreations.gaslib.ModMain
 import net.totobirdcreations.gaslib.util.RGBA
 import org.joml.Vector3d
 import kotlin.math.absoluteValue
+import kotlin.math.pow
 
 
 internal fun GasChunk.tick(gasWorld : GasWorld) {
@@ -29,10 +30,11 @@ internal fun GasChunk.tick(gasWorld : GasWorld) {
             val neighborBlocks = mutableMapOf(*Direction.entries.mapNotNull { dir -> Pair(dir,
                 blockCache.getOrPut(this, pos.offset(dir)) ?: return@mapNotNull null)
             }.toTypedArray());
-            val neighborPressureWeights = mutableMapOf(*neighborBlocks.mapNotNull { (dir, block) ->
-                val pressureDiff = (localBlock.pressure - block.pressure).coerceAtLeast(0.0);
+            val neighborPressureWeights = mutableMapOf(*neighborBlocks.mapNotNull { (dir, neighborBlock) ->
+                val pressureDiff = localBlock.pressure - neighborBlock.pressure;
                 if (pressureDiff > 0.0) { Pair(dir, pressureDiff) } else { null }
             }.toTypedArray());
+
 
             // Handle each gas individually.
             for ((gas, amount) in block.gases) {
@@ -46,24 +48,26 @@ internal fun GasChunk.tick(gasWorld : GasWorld) {
                 var nextAmount = amount;
 
                 val neighborTransferWeights = mutableMapOf(*neighborPressureWeights.mapNotNull { (dir, weight) ->
-                    val transferWeight = weight * gas.transferResistance(gasWorld.world, pos, dir);
-                    if (transferWeight > 0.0) { Pair(dir, transferWeight) } else { null }
+                    val transferWeight1  = weight * gas.transferResistance(gasWorld.world, pos, dir);
+                    val transferWeight2 = transferWeight1 * (localBlock.motionNormalised.dot(neighborBlocks[dir]!!.motionNormalised) * 0.25 + 0.75).coerceIn(0.5, 1.0);
+                    if (transferWeight2 > 0.0) { Pair(dir, Pair(transferWeight1, transferWeight2)) } else { null }
                 }.toTypedArray());
-                val neighborTransferWeightsSum = neighborTransferWeights.values.sum();
+                val neighborTransferWeight1sSum = neighborTransferWeights.values.sumOf { (transferWeight1, _) -> transferWeight1 };
+                val neighborTransferWeight2sSum = neighborTransferWeights.values.sumOf { (_, transferWeight2) -> transferWeight2 };
 
                 // Transfer gas to neighbors, split based on previous calculations.
                 for ((dir, transferWeight) in neighborTransferWeights) {
+                    val (transferWeight1, transferWeight2) = transferWeight;
                     val neighborBlock = neighborBlocks[dir]!!;
-                    val amountToTransfer = amount * transferWeight / neighborTransferWeightsSum;
+                    val addMotion = amount * transferWeight1 / neighborTransferWeight1sSum;
+                    neighborBlock.gasBlock.motion.add(
+                        dir.offsetX * addMotion * 0.05,
+                        dir.offsetY * addMotion * 0.05,
+                        dir.offsetZ * addMotion * 0.05
+                    )
+                    val amountToTransfer = amount * transferWeight2 / neighborTransferWeight2sSum;
                     neighborBlock.gasBlock.addAmount(gas, amountToTransfer, shouldSave = ! neighborBlock.sameChunk);
                     nextAmount -= amountToTransfer;
-                    val motionAdd = Vector3d(
-                        dir.offsetX * amountToTransfer * 0.05,
-                        dir.offsetY * amountToTransfer * 0.05,
-                        dir.offsetZ * amountToTransfer * 0.05
-                    );
-                    nextMotion.add(motionAdd);
-                    neighborBlock.gasBlock.motion.add(motionAdd);
                 }
 
                 // If there was enough change, save it.
@@ -117,19 +121,23 @@ internal fun GasChunk.tick(gasWorld : GasWorld) {
 
 // Basically just a tuple.
 private data class CachedBlock(
-    val sameChunk : Boolean,
-    val gasBlock  : GasBlock,
-    val pressure  : Double
+    val sameChunk        : Boolean,
+    val gasBlock         : GasBlock,
+    val pressure         : Double,
+    val motionNormalised : Vector3d
 );
 private fun MutableMap<BlockPos, CachedBlock>.getOrPut(gasChunk : GasChunk, pos : BlockPos) : CachedBlock? {
     return this.getOrPut(pos) { ->
-        val chunkPos = ChunkPos(pos);
-        val gasBlock = gasChunk.gasWorld!!.getOrPutBlock(chunkPos, pos) ?: return null;
-        val pressure = gasChunk.getPressure(pos) ?: 0.0;
+        val chunkPos         = ChunkPos(pos);
+        val gasWorld         = gasChunk.gasWorld!!;
+        val gasBlock         = gasWorld.getOrPutBlock(chunkPos, pos) ?: return null;
+        val pressure         = gasBlock.getPressure(gasWorld.world);
+        val motionNormalised = Vector3d(gasBlock.motion.x, gasBlock.motion.y, gasBlock.motion.z).normalize();
         CachedBlock(
             gasChunk.chunkPos == chunkPos,
             gasBlock,
-            pressure
+            pressure,
+            motionNormalised
         )
     };
 }
