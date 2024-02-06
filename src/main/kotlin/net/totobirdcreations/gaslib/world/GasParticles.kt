@@ -52,11 +52,9 @@ internal object GasParticles {
                 val (builder, motion) = particle;
                 builder
                     .setMotion(motion.x, motion.y, motion.z)
-                    .setLifetime(5)
                     .spawn(world, pos.x + 0.5, pos.y + 0.5, pos.z + 0.5);
                 builder
                     .setMotion(0.0, 0.0, 0.0)
-                    .setLifetime(10)
                     .spawn(world, pos.x + 0.5, pos.y + 0.5, pos.z + 0.5);
             }
         }
@@ -111,8 +109,8 @@ internal object GasParticles {
                         .build()
                     )
                     .setTransparencyData(GenericParticleData
-                        .create(0.0f, alpha, 0.0f)
-                        .setEasing(Easing.QUAD_OUT, Easing.LINEAR)
+                        .create(alpha, 0.0f)
+                        .setEasing(Easing.LINEAR)
                         .build()
                     )
                     .setScaleData(GenericParticleData
@@ -126,7 +124,8 @@ internal object GasParticles {
                         .build()
                     )
                     .disableNoClip()
-                    .setRandomOffset(1.0),
+                    .setRandomOffset(0.5)
+                    .setLifetime(5),
             Vector3d(motionX, motionY, motionZ));
         }
 
