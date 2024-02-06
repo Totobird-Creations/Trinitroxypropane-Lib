@@ -1,16 +1,20 @@
+@file: ApiStatus.Internal
+
 package net.totobirdcreations.gaslib.world
 
 import dev.onyxstudios.cca.api.v3.component.Component
 import net.minecraft.nbt.NbtCompound
 import net.minecraft.nbt.NbtElement
 import net.minecraft.nbt.NbtList
-import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.ChunkPos
 import net.minecraft.world.chunk.Chunk
-import net.totobirdcreations.gaslib.Mod
+import net.totobirdcreations.gaslib.ModMain
 import net.totobirdcreations.gaslib.api.AbstractGasVariant
-import net.totobirdcreations.gaslib.api.GasAPI
+import net.totobirdcreations.gaslib.util.getBlockPos
+import net.totobirdcreations.gaslib.util.isZero
+import net.totobirdcreations.gaslib.util.putBlockPos
+import org.jetbrains.annotations.ApiStatus
 import org.joml.Vector3d
 import java.util.concurrent.ConcurrentHashMap
 
@@ -26,191 +30,127 @@ internal class GasChunk(
     internal val gasBlocks : ConcurrentHashMap<BlockPos, GasBlock> = ConcurrentHashMap();
 
 
+    fun getBlock(pos : BlockPos) : GasBlock? {
+        return this.gasBlocks[pos];
+    }
+    fun getOrPutBlock(pos : BlockPos) : GasBlock {
+        return this.gasBlocks.getOrPut(pos) { -> GasBlock(this, pos, ConcurrentHashMap()) };
+    }
+
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.setAmount]**
      */
-    fun setAmount(pos : BlockPos, gas : AbstractGasVariant, amount : Double, shouldSave : Boolean = true) : Boolean {
-        val gasBlock = this.gasBlocks[pos];
-        if (gasBlock != null) {
-            gasBlock.gases[gas] = amount;
+    fun setAmount(pos : BlockPos, gas : AbstractGasVariant, amount : Double, shouldSave : Boolean = true) {
+        if (amount > 0.0) {
+            this.getOrPutBlock(pos).setAmount(gas, amount, shouldSave = shouldSave);
         } else {
-            val map = ConcurrentHashMap<AbstractGasVariant, Double>();
-            map[gas] = amount;
-            this.gasBlocks[pos] = GasBlock(map);
+            this.gasBlocks.remove(pos);
+            if (shouldSave) { this.chunk.setNeedsSaving(true); }
         }
-        if (shouldSave) { this.chunk.setNeedsSaving(true); }
-        return true;
     }
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.modifyAmount]**
      */
-    fun addAmount(pos : BlockPos, gas : AbstractGasVariant, amount : Double, shouldSave : Boolean = true) : Boolean {
-        val gasBlock = this.gasBlocks[pos];
-        if (gasBlock != null) {
-            if (gasBlock.gases.containsKey(gas)) {
-                gasBlock.gases[gas] = gasBlock.gases[gas]!! + amount;
-            } else {
-                gasBlock.gases[gas] = amount;
-            }
-        } else {
-            val map = ConcurrentHashMap<AbstractGasVariant, Double>();
-            map[gas] = amount;
-            this.gasBlocks[pos] = GasBlock(map);
+    fun addAmount(pos : BlockPos, gas : AbstractGasVariant, amount : Double, shouldSave : Boolean = true) {
+        if (amount > 0.0) {
+            this.getOrPutBlock(pos).addAmount(gas, amount, shouldSave = shouldSave);
         }
-        if (shouldSave) { this.chunk.setNeedsSaving(true); }
-        return true;
     }
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.modifyAmount]**
      */
     fun removeAmount(pos : BlockPos, gas : AbstractGasVariant, amount : Double, shouldSave : Boolean = true) : Boolean {
-        val gasBlock   = this.gasBlocks[pos]  ?: return false;
-        val prevAmount = gasBlock.gases[gas] ?: return false;
-        if (amount >= prevAmount) {
-            gasBlock.gases.remove(gas);
-        } else {
-            gasBlock.gases[gas] = prevAmount - amount;
-        }
-        if (shouldSave) { this.chunk.setNeedsSaving(true); }
-        return true;
+        return if (amount > 0.0) {
+            val gasBlock = this.getBlock(pos) ?: return false;
+            val result   = gasBlock.removeAmount(gas, amount, shouldSave = shouldSave);
+            if (gasBlock.isEmpty()) { this.gasBlocks.remove(pos); }
+            result
+        } else { false };
     }
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.getAmount]**
      */
-    fun getAmount(pos : BlockPos, gas : AbstractGasVariant) : Double {
-        return this.gasBlocks[pos]?.gases?.get(gas) ?: 0.0;
+    fun getAmount(pos : BlockPos, gas : AbstractGasVariant) : Double? {
+        return this.getBlock(pos)?.getAmount(gas);
     }
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.getPressure]**
      */
-    fun getPressure(pos : BlockPos) : Double? {
-        val world = this.gasWorld?.world ?: return null;
-        return this.gasBlocks[pos]?.gases?.entries?.sumOf { (gas, amount) -> amount * gas.volumePerAmount(world, pos) } ?: 0.0;
-    }
-    /**
-     * **See [net.totobirdcreations.gaslib.api.GasAPI.getPressure]**
-     */
-    fun getPressure(pos : BlockPos, gas : AbstractGasVariant) : Double? {
-        val world = this.gasWorld?.world ?: return null;
-        return this.getAmount(pos, gas) * gas.volumePerAmount(world, pos);
+    fun getPressure(pos : BlockPos, gas : AbstractGasVariant? = null) : Double? {
+        val gasBlock = this.getBlock(pos) ?: return null;
+        return if (gas != null) { gasBlock.getPressure(gas) } else {gasBlock.getPressure() };
     }
 
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.setMotion]**
      */
-    fun setMotion(pos : BlockPos, vec : Vector3d) : Boolean {
-        val gasBlock = this.gasBlocks[pos] ?: return false;
-        gasBlock.motion.set(vec);
-        return true;
+    fun setMotion(pos : BlockPos, vec : Vector3d, shouldSave : Boolean = true) {
+        if (vec.isZero()) {
+            val gasBlock = this.getBlock(pos) ?: return;
+            gasBlock.setMotion(Vector3d(), shouldSave = shouldSave);
+            if (gasBlock.isEmpty()) { this.gasBlocks.remove(pos); }
+        } else {
+            this.getOrPutBlock(pos).setMotion(vec, shouldSave = shouldSave);
+        }
     }
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.modifyMotion]**
      */
-    fun modifyMotion(pos : BlockPos, vec : Vector3d) : Boolean {
-        val gasBlock = this.gasBlocks[pos] ?: return false;
-        gasBlock.motion.add(vec);
-        return true;
+    fun modifyMotion(pos : BlockPos, vec : Vector3d, shouldSave : Boolean = true) {
+        if (vec.isZero()) {return;}
+        this.getOrPutBlock(pos).modifyMotion(vec, shouldSave = shouldSave);
     }
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.getMotion]**
      */
-    fun getMotion(pos : BlockPos) : Vector3d {
-        return this.gasBlocks[pos]?.motion ?: Vector3d();
+    fun getMotion(pos : BlockPos) : Vector3d? {
+        return this.getBlock(pos)?.getMotion();
     }
 
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.queuePurgeAllLoaded]**
      */
-    fun purgeAllLoaded(gas : AbstractGasVariant? = null) {
+    fun purgeAllLoaded(gas : AbstractGasVariant? = null, shouldSave : Boolean = true) {
         if (gas == null) {
             this.gasBlocks.clear();
         } else {
-            for ((_, gasBlock) in this.gasBlocks) {
-                gasBlock.gases.remove(gas);
+            for ((pos, gasBlock) in this.gasBlocks) {
+                gasBlock.purgeAllLoaded(gas);
+                if (gasBlock.isEmpty()) { this.gasBlocks.remove(pos); }
             }
         }
-        this.chunk.setNeedsSaving(true);
+        if (shouldSave) { this.chunk.setNeedsSaving(true); }
     }
 
 
     override fun writeToNbt(nbt : NbtCompound) {
         val chunkNbt = NbtList();
         for ((pos, block) in this.gasBlocks) {
-            if (block.gases.isNotEmpty()) {
-                var save = false;
-                val gasesNbt = NbtCompound();
-                for ((id, amount) in block.gases) {
-                    if (amount > 0.0) {
-                        save = true;
-                        gasesNbt.putDouble(id.id.toString(), amount);
-                    }
-                }
-                if (save) {
-                    val posNbt = NbtCompound();
-                    posNbt.putInt("x", pos.x);
-                    posNbt.putInt("y", pos.y);
-                    posNbt.putInt("z", pos.z);
-                    posNbt.putInt("vx", pos.x);
-                    posNbt.putInt("vy", pos.y);
-                    posNbt.putInt("vz", pos.z);
-                    posNbt.put("gases", gasesNbt);
-                    chunkNbt.add(posNbt);
-                }
+            val blockNbt = NbtCompound();
+            block.write(blockNbt);
+            if (! blockNbt.isEmpty) {
+                blockNbt.putBlockPos("pos", pos);
+                chunkNbt.add(blockNbt);
             }
         }
-        nbt.put("${Mod.ID}_gases", chunkNbt);
+        nbt.put(ModMain.ID, chunkNbt);
     }
 
     override fun readFromNbt(nbt : NbtCompound) {
         this.gasBlocks.clear();
         try {
             val compoundType = NbtElement.COMPOUND_TYPE.toInt();
-            val intType      = NbtElement.INT_TYPE.toInt();
-            val doubleType   = NbtElement.DOUBLE_TYPE.toInt();
-            val chunkNbt = nbt.getList("${Mod.ID}_gases", compoundType);
-            for (posNbt in chunkNbt) {
-                posNbt as NbtCompound;
-                if (   posNbt.contains("x", intType)
-                    && posNbt.contains("y", intType)
-                    && posNbt.contains("z", intType)
-                    && posNbt.contains("vx", doubleType)
-                    && posNbt.contains("vy", doubleType)
-                    && posNbt.contains("vz", doubleType)
-                    && posNbt.contains("gases", compoundType)
-                ) {
-                    val pos      = BlockPos(posNbt.getInt("x"), posNbt.getInt("y"), posNbt.getInt("z"));
-                    val gasesNbt = posNbt.getCompound("gases");
-                    val gases    = ConcurrentHashMap<AbstractGasVariant, Double>();
-                    for (idStr in gasesNbt.keys) {
-                        try {
-                            val id  = Identifier(idStr);
-                            val gas = GasAPI.getRegisteredGasVariant(id);
-                            if (gas != null) {
-                                if (gasesNbt.contains(idStr, doubleType)) {
-                                    gases[gas] = gasesNbt.getDouble(idStr);
-                                } else {
-                                    Mod.LOGGER.warn("Voiding invalid gas VARIANT ${id} at BLOCK ${pos} in CHUNK ${this.chunkPos} in WORLD ${this.gasWorld?.id} containing invalid data.");
-                                }
-                            } else {
-                                Mod.LOGGER.warn("Voiding unknown gas VARIANT ${id} at BLOCK ${pos} in CHUNK ${this.chunkPos} in WORLD ${this.gasWorld?.id}. Registry missing?");
-                            }
-                        } catch (_ : Exception) {
-                            Mod.LOGGER.warn("Voiding invalid gas VARIANT `${idStr.replace("\\", "\\\\").replace("`", "\\`")}` at BLOCK ${pos} in CHUNK ${this.chunkPos} in WORLD ${this.gasWorld?.id} containing invalid data.");
-                        }
-                    }
-                    if (gases.isNotEmpty()) {
-                        this.gasBlocks[pos] = GasBlock(gases, motion = Vector3d(
-                            posNbt.getDouble("vx"),
-                            posNbt.getDouble("vy"),
-                            posNbt.getDouble("vz")
-                        )
-                        );
-                    }
+            val chunkNbt = nbt.getList(ModMain.ID, compoundType);
+            for (blockNbt in chunkNbt) {
+                blockNbt as NbtCompound;
+                val pos = blockNbt.getBlockPos("pos");
+                if (pos != null) {
+                    GasBlock.read(this, pos, blockNbt);
                 }
             }
         } catch (e : Exception) {
-            Mod.LOGGER.warn("Voiding gas CHUNK ${this.chunkPos} in WORLD ${this.gasWorld?.id} failed to load:");
-            Mod.LOGGER.warn("  ${e}");
+            ModMain.LOGGER.warn("Voiding gas CHUNK ${this.chunkPos} in WORLD ${this.gasWorld?.id} failed to load:");
+            ModMain.LOGGER.warn("  ${e}");
             this.gasBlocks.clear();
         }
     }

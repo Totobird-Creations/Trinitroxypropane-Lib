@@ -10,9 +10,11 @@ import net.minecraft.state.property.Properties
 import net.minecraft.util.math.BlockPos
 import net.totobirdcreations.gaslib.world.GasRegistry
 import net.totobirdcreations.gaslib.world.GasServer
+import org.jetbrains.annotations.ApiStatus
 import kotlin.math.absoluteValue
 
 
+@ApiStatus.AvailableSince("Create Mod")
 class GasBurnerBlockEntity(pos: BlockPos, state: BlockState) : KineticBlockEntity(GasBurnerBlock.ENTITY, pos, state) {
 
     @Suppress("UnstableApiUsage")

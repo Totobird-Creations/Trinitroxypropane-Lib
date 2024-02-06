@@ -1,3 +1,5 @@
+@file: ApiStatus.Internal
+
 package net.totobirdcreations.gaslib.world
 
 import com.mojang.brigadier.arguments.ArgumentType
@@ -13,7 +15,8 @@ import net.minecraft.command.argument.IdentifierArgumentType
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
-import net.totobirdcreations.gaslib.Mod
+import net.totobirdcreations.gaslib.ModMain
+import org.jetbrains.annotations.ApiStatus
 
 
 internal object GasCommand {
@@ -66,7 +69,7 @@ internal object GasCommand {
         val pos    = BlockPosArgumentType   .getBlockPos   (ctx, "pos"    );
         val gasId  = IdentifierArgumentType .getIdentifier (ctx, "gasId"  );
         val amount = DoubleArgumentType     .getDouble     (ctx, "amount" );
-        val gas    = GasRegistry.getRegisteredGas(gasId) ?: throw CommandException(Text.translatable("command.${Mod.ID}.gas.modify.unknown_gas_variant", gasId));
+        val gas    = GasRegistry.getRegisteredGas(gasId) ?: throw CommandException(Text.translatable("command.${ModMain.ID}.gas.modify.unknown_gas_variant", gasId));
 
         val success = gas.modifyAmount(
             world,
@@ -74,7 +77,7 @@ internal object GasCommand {
             amount
         );
 
-        val message = Text.translatable("command.${Mod.ID}.gas.modify.${if (amount >= 0.0) {"add"} else {"remove"}}.${if (success) {"success"} else {"exception"}}",
+        val message = Text.translatable("command.${ModMain.ID}.gas.modify.${if (amount >= 0.0) {"add"} else {"remove"}}.${if (success) {"success"} else {"exception"}}",
             gasId,
             amount,
             gas.getPressure(world, pos),
@@ -94,17 +97,17 @@ internal object GasCommand {
 
         if (specificGas) {
             val gasId = IdentifierArgumentType.getIdentifier(ctx, "gasId");
-            val gas   = GasRegistry.getRegisteredGas(gasId) ?: throw CommandException(Text.translatable("command.${Mod.ID}.gas.modify.unknown_gas_variant", gasId));
+            val gas   = GasRegistry.getRegisteredGas(gasId) ?: throw CommandException(Text.translatable("command.${ModMain.ID}.gas.modify.unknown_gas_variant", gasId));
 
             gas.queuePurgeAllLoaded(world);
-            ctx.source.sendFeedback({ -> Text.translatable("command.${Mod.ID}.gas.purge.specific.success",
+            ctx.source.sendFeedback({ -> Text.translatable("command.${ModMain.ID}.gas.purge.specific.success",
                 gasId,
                 world.dimensionKey.value
             ) }, true);
 
         } else {
             GasServer.queuePurgeAllLoaded(world);
-            ctx.source.sendFeedback({ -> Text.translatable("command.${Mod.ID}.gas.purge.general.success",
+            ctx.source.sendFeedback({ -> Text.translatable("command.${ModMain.ID}.gas.purge.general.success",
                 world.dimensionKey.value
             ) }, true);
         }

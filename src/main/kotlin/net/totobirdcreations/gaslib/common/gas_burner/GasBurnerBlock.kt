@@ -23,7 +23,7 @@ import net.minecraft.sound.BlockSoundGroup
 import net.minecraft.state.property.Properties
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
-import net.totobirdcreations.gaslib.Mod
+import net.totobirdcreations.gaslib.ModMain
 import org.jetbrains.annotations.ApiStatus
 
 
@@ -45,9 +45,9 @@ object GasBurnerBlock:
         if (! this.enabled) {
             this.enabled = true;
 
-            Registry.register(Registries.BLOCK             , Mod.id("gas_burner"), this   );
-            Registry.register(Registries.ITEM              , Mod.id("gas_burner"), ITEM   );
-            Registry.register(Registries.BLOCK_ENTITY_TYPE , Mod.id("gas_burner"), ENTITY );
+            Registry.register(Registries.BLOCK             , ModMain.id("gas_burner"), this   );
+            Registry.register(Registries.ITEM              , ModMain.id("gas_burner"), ITEM   );
+            Registry.register(Registries.BLOCK_ENTITY_TYPE , ModMain.id("gas_burner"), ENTITY );
             @Suppress("UnstableApiUsage")
             FluidStorage.SIDED.registerForBlockEntity({ entity, dir ->
                 if (entity.cachedState.get(Properties.FACING).opposite == dir) { entity.tank } else { null }

@@ -1,9 +1,12 @@
+@file: ApiStatus.Internal
+
 package net.totobirdcreations.gaslib.world
 
 import net.minecraft.fluid.Fluid
 import net.minecraft.registry.Registries
 import net.minecraft.util.Identifier
 import net.totobirdcreations.gaslib.api.AbstractGasVariant
+import org.jetbrains.annotations.ApiStatus
 import org.valkyrienskies.core.util.toImmutableSet
 
 

@@ -1,3 +1,5 @@
+@file: ApiStatus.Internal
+
 package net.totobirdcreations.gaslib.world
 
 import net.fabricmc.api.EnvType
@@ -11,8 +13,9 @@ import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.ChunkPos
 import net.minecraft.world.chunk.WorldChunk
-import net.totobirdcreations.gaslib.Mod
+import net.totobirdcreations.gaslib.ModMain
 import net.totobirdcreations.gaslib.util.RGBA
+import org.jetbrains.annotations.ApiStatus
 import org.joml.Vector3d
 import team.lodestar.lodestone.setup.LodestoneParticles
 import team.lodestar.lodestone.systems.rendering.particle.Easing
@@ -27,7 +30,7 @@ import kotlin.random.Random
 @Environment(EnvType.CLIENT)
 internal object GasParticles {
 
-    val SPAWN_CHANNEL : Identifier = Mod.id("spawn_gas_particle");
+    val SPAWN_CHANNEL : Identifier = ModMain.id("spawn_gas_particle");
 
 
     @Environment(EnvType.CLIENT)
@@ -73,9 +76,9 @@ internal object GasParticles {
             packet.writeFloat    (block.colour.g.coerceIn(0.0f, 1.0f));
             packet.writeFloat    (block.colour.b.coerceIn(0.0f, 1.0f));
             packet.writeFloat    (block.colour.a.coerceIn(0.0f, 1.0f));
-            packet.writeDouble   ((block.motion.x * 100.0).coerceIn(-1.0, 1.0));
-            packet.writeDouble   ((block.motion.y * 100.0).coerceIn(-1.0, 1.0));
-            packet.writeDouble   ((block.motion.z * 100.0).coerceIn(-1.0, 1.0));
+            packet.writeDouble   ((block.motion.x * 10.0).coerceIn(-1.0, 1.0));
+            packet.writeDouble   ((block.motion.y * 10.0).coerceIn(-1.0, 1.0));
+            packet.writeDouble   ((block.motion.z * 10.0).coerceIn(-1.0, 1.0));
         }
         for (player in players) {
             ServerPlayNetworking.send(player, SPAWN_CHANNEL, packet);

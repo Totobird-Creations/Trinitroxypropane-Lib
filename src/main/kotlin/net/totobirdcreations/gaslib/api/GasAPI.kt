@@ -73,8 +73,13 @@ object GasAPI {
 
     /**
      * Add/Remove an amount of a gas to/from a given position, assuming it is loaded.
-     *
-     * **If this fails for any reason, it will return `false`**
+     */
+    @JvmStatic
+    fun setAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant, amount : Double) : Boolean {
+        return GasServer.setAmount(world, pos, gas, amount);
+    }
+    /**
+     * Add/Remove an amount of a gas to/from a given position, assuming it is loaded.
      */
     @JvmStatic
     fun modifyAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant, amount : Double) : Boolean {

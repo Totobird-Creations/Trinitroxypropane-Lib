@@ -21,13 +21,13 @@
 	"entrypoints": {
 		"main": [
 			{
-				"value": "${mod_group}.${mod_id}.Mod",
+				"value": "${mod_group}.${mod_id}.ModMain",
 				"adapter": "kotlin"
 			}
 		],
 		"client": [
 			{
-				"value": "${mod_group}.${mod_id}.Mod",
+				"value": "${mod_group}.${mod_id}.ModClient",
 				"adapter": "kotlin"
 			}
 		],
