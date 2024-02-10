@@ -62,10 +62,10 @@ abstract class AbstractGasVariant(
 
 
     /**
-     * **See [net.totobirdcreations.gaslib.api.GasAPI.modifyAmount]**
+     * **See [net.totobirdcreations.gaslib.api.GasAPI.addAmount]**
      */
     fun modifyAmount(world : ServerWorld, pos : BlockPos, amount : Double) : Boolean {
-        return GasServer.modifyAmount(world, pos, this, amount);
+        return GasServer.addAmount(world, pos, this, amount);
     }
 
     /**

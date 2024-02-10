@@ -1,6 +1,6 @@
 @file: ApiStatus.Internal
 
-package net.totobirdcreations.gaslib.world
+package net.totobirdcreations.gaslib.common.command
 
 import com.mojang.brigadier.arguments.ArgumentType
 import com.mojang.brigadier.arguments.DoubleArgumentType
@@ -16,6 +16,8 @@ import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
 import net.totobirdcreations.gaslib.ModMain
+import net.totobirdcreations.gaslib.world.GasRegistry
+import net.totobirdcreations.gaslib.world.GasServer
 import org.jetbrains.annotations.ApiStatus
 
 

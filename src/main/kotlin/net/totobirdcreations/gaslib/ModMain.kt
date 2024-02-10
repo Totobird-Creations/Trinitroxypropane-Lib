@@ -8,7 +8,7 @@ import net.minecraft.util.Identifier
 import net.totobirdcreations.gaslib.common.SteamGas
 import net.totobirdcreations.gaslib.common.SuperheatedGas
 import net.totobirdcreations.gaslib.common.gas_burner.GasBurnerBlock
-import net.totobirdcreations.gaslib.world.GasCommand
+import net.totobirdcreations.gaslib.common.command.GasCommand
 import net.totobirdcreations.gaslib.world.GasServer
 import org.jetbrains.annotations.ApiStatus
 import org.slf4j.LoggerFactory

@@ -4,14 +4,13 @@ package net.totobirdcreations.gaslib.world
 
 import net.minecraft.nbt.NbtCompound
 import net.minecraft.nbt.NbtElement
-import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.ChunkPos
+import net.minecraft.util.math.Direction
 import net.totobirdcreations.gaslib.ModMain
 import net.totobirdcreations.gaslib.api.AbstractGasVariant
-import net.totobirdcreations.gaslib.util.getVector3d
 import net.totobirdcreations.gaslib.util.isZero
-import net.totobirdcreations.gaslib.util.putVector3d
 import org.jetbrains.annotations.ApiStatus
 import org.joml.Vector3d
 import java.util.concurrent.ConcurrentHashMap
@@ -20,13 +19,14 @@ import java.util.concurrent.ConcurrentHashMap
 internal data class GasBlock(
     internal val gasChunk : GasChunk,
     internal val blockPos : BlockPos,
-    internal val gases    : ConcurrentHashMap<AbstractGasVariant, Double>,
-    internal var motion   : Vector3d = Vector3d()
+    internal val gases    : ConcurrentHashMap<AbstractGasVariant, Double> = ConcurrentHashMap(),
+    internal var motions  : Vector3d = Vector3d() // Only positive edges.
 ) {
 
-    fun isEmpty() : Boolean {
-        return this.motion.isZero() && this.gases.all { (gas, amount) -> amount < gas.dissipateThreshold };
+    fun update() {
+
     }
+
 
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.setAmount]**
@@ -36,9 +36,9 @@ internal data class GasBlock(
         if (shouldSave) { this.gasChunk.chunk.setNeedsSaving(true); }
     }
     /**
-     * **See [net.totobirdcreations.gaslib.api.GasAPI.modifyAmount]**
+     * **See [net.totobirdcreations.gaslib.api.GasAPI.addAmount]**
      */
-    fun addAmount(gas : AbstractGasVariant, amount : Double, shouldSave : Boolean = true) {
+    fun increaseAmount(gas : AbstractGasVariant, amount : Double, shouldSave : Boolean = true) {
         if (this.gases.containsKey(gas)) {
             this.gases[gas] = this.gases[gas]!! + amount;
         } else {
@@ -47,9 +47,9 @@ internal data class GasBlock(
         if (shouldSave) { this.gasChunk.chunk.setNeedsSaving(true); }
     }
     /**
-     * **See [net.totobirdcreations.gaslib.api.GasAPI.modifyAmount]**
+     * **See [net.totobirdcreations.gaslib.api.GasAPI.addAmount]**
      */
-    fun removeAmount(gas : AbstractGasVariant, amount : Double, shouldSave : Boolean = true) : Boolean {
+    fun decreaseAmount(gas : AbstractGasVariant, amount : Double, shouldSave : Boolean = true) : Boolean {
         val prevAmount = this.gases[gas] ?: return false;
         if (prevAmount <= 0.0) {return false;}
         if (amount >= prevAmount) {
@@ -63,52 +63,66 @@ internal data class GasBlock(
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.getAmount]**
      */
-    fun getAmount(gas : AbstractGasVariant) : Double? {
-        return this.gases[gas];
+    fun getAmount(gas : AbstractGasVariant) : Double {
+        return this.gases[gas] ?: 0.0;
     }
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.getPressure]**
      */
-    fun getPressure(gas : AbstractGasVariant) : Double? {
+    fun getPressure(gas : AbstractGasVariant? = null) : Double? {
         val world = this.gasChunk.gasWorld?.world ?: return null;
-        return this.getPressure(world, gas);
-    }
-    fun getPressure(world : ServerWorld, gas : AbstractGasVariant) : Double? {
-        return (this.getAmount(gas) ?: return null) * gas.volumePerAmount(world, this.blockPos);
-    }
-    /**
-     * **See [net.totobirdcreations.gaslib.api.GasAPI.getPressure]**
-     */
-    fun getPressure() : Double? {
-        val world = this.gasChunk.gasWorld?.world ?: return null;
-        return this.getPressure(world);
-    }
-    fun getPressure(world : ServerWorld) : Double {
-        return this.gases.entries.sumOf { (gas, amount) -> amount * gas.volumePerAmount(world, this.blockPos) };
-    }
-    fun getGasPressures(world : ServerWorld) : MutableMap<AbstractGasVariant, Double> {
-        return mutableMapOf(*(this.gases.map { (gas, amount) -> Pair(gas, amount * gas.volumePerAmount(world, this.blockPos)) }).toTypedArray());
+        return if (gas != null) {
+            this.getAmount(gas) * gas.volumePerAmount(world, this.blockPos)
+        } else {
+            this.gases.entries.sumOf { (gas, amount) -> amount * gas.volumePerAmount(world, this.blockPos) }
+        }
     }
 
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.setMotion]**
      */
-    fun setMotion(vec : Vector3d, shouldSave : Boolean = true) {
-        this.motion.set(vec);
-        if (shouldSave) { this.gasChunk.chunk.setNeedsSaving(true); }
+    fun setMotion(dir : Direction, amount : Double, shouldSave : Boolean = true) : Boolean {
+        when (dir) {
+            Direction.UP    -> { this.motions.y = amount; }
+            Direction.SOUTH -> { this.motions.z = amount; }
+            Direction.EAST  -> { this.motions.x = amount; }
+            else            -> {
+                val blockPos = this.blockPos.offset(dir);
+                return this.gasChunk.gasWorld?.setMotion(ChunkPos(blockPos), blockPos, dir.opposite, amount, shouldSave = shouldSave) == true;
+            }
+        };
+        if (shouldSave) { this.gasChunk.chunk.setNeedsSaving(true); };
+        return true;
     }
     /**
-     * **See [net.totobirdcreations.gaslib.api.GasAPI.modifyMotion]**
+     * **See [net.totobirdcreations.gaslib.api.GasAPI.addMotion]**
      */
-    fun modifyMotion(vec : Vector3d, shouldSave : Boolean = true) {
-        this.motion.add(vec);
-        if (shouldSave) { this.gasChunk.chunk.setNeedsSaving(true); }
+    fun addMotion(dir : Direction, amount : Double, shouldSave : Boolean = true) : Boolean {
+        when (dir) {
+            Direction.UP    -> { this.motions.y += amount; }
+            Direction.SOUTH -> { this.motions.z += amount; }
+            Direction.EAST  -> { this.motions.x += amount; }
+            else            -> {
+                val blockPos = this.blockPos.offset(dir);
+                return this.gasChunk.gasWorld?.addMotion(ChunkPos(blockPos), blockPos, dir.opposite, -amount, shouldSave = shouldSave) == true;
+            }
+        };
+        if (shouldSave) { this.gasChunk.chunk.setNeedsSaving(true); };
+        return true;
     }
     /**
      * **See [net.totobirdcreations.gaslib.api.GasAPI.getMotion]**
      */
-    fun getMotion() : Vector3d {
-        return this.motion;
+    fun getMotion(dir : Direction) : Double? {
+        return when (dir) {
+            Direction.UP    -> { this.motions.y }
+            Direction.SOUTH -> { this.motions.z }
+            Direction.EAST  -> { this.motions.x }
+            else            -> {
+                val blockPos = this.blockPos.offset(dir);
+                this.gasChunk.gasWorld?.getMotion(ChunkPos(blockPos), blockPos, dir.opposite);
+            }
+        };
     }
 
     /**
@@ -116,6 +130,12 @@ internal data class GasBlock(
      */
     fun purgeAllLoaded(gas : AbstractGasVariant) {
         this.gases.remove(gas);
+    }
+
+
+    fun clear() {
+        this.gases.clear();
+        this.motions.zero();
     }
 
 
@@ -129,32 +149,31 @@ internal data class GasBlock(
         if (! gasesNbt.isEmpty) {
             nbt.put("gases", gasesNbt);
         }
-        if (! this.motion.isZero()) {
-            nbt.putVector3d("motion", this.motion);
-        }
+        if (! this.motions.x.isZero()) { nbt.putDouble("motionX", this.motions.x); }
+        if (! this.motions.y.isZero()) { nbt.putDouble("motionY", this.motions.y); }
+        if (! this.motions.z.isZero()) { nbt.putDouble("motionZ", this.motions.z); }
     }
 
-    companion object {
-
-        fun read(gasChunk : GasChunk, blockPos : BlockPos, nbt : NbtCompound) {
-            val gases = ConcurrentHashMap<AbstractGasVariant, Double>();
-            if (nbt.contains("gases", NbtElement.COMPOUND_TYPE.toInt())) {
-                val gasesNbt = nbt.getCompound("gases");
-                for (gasId in gasesNbt.keys) {
-                    try {
-                        val gas = GasRegistry.getRegisteredGas(Identifier(gasId));
-                        if (gas != null) {
-                            gases[gas] = gasesNbt.getDouble(gasId);
-                            continue;
-                        }
-                    } catch (_ : Exception) {}
-                    ModMain.LOGGER.warn("Voiding invalid gas VARIANT ${gasId} at BLOCK ${blockPos} in CHUNK ${gasChunk.chunkPos} in WORLD ${gasChunk.gasWorld?.id} containing invalid data.");
-                }
+    fun read(nbt : NbtCompound) {
+        this.gases.clear();
+        if (nbt.contains("gases", NbtElement.COMPOUND_TYPE.toInt())) {
+            val gasesNbt = nbt.getCompound("gases");
+            for (gasId in gasesNbt.keys) {
+                try {
+                    val gas = GasRegistry.getRegisteredGas(Identifier(gasId));
+                    if (gas != null) {
+                        this.gases[gas] = gasesNbt.getDouble(gasId);
+                        continue;
+                    }
+                } catch (_ : Exception) {}
+                ModMain.LOGGER.warn("Voiding invalid gas VARIANT ${gasId} at BLOCK ${blockPos} in CHUNK ${gasChunk.chunkPos} in WORLD ${gasChunk.gasWorld?.id} containing invalid data.");
             }
-            val motion = nbt.getVector3d("motion") ?: Vector3d();
-            gasChunk.gasBlocks[blockPos] = GasBlock(gasChunk, blockPos, gases, motion = motion);
         }
-
+        this.motions.set(
+            nbt.getDouble("motionX"),
+            nbt.getDouble("motionY"),
+            nbt.getDouble("motionZ")
+        );
     }
 
 }

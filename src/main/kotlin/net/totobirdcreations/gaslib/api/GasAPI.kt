@@ -4,10 +4,10 @@ import net.minecraft.fluid.Fluid
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Direction
 import net.totobirdcreations.gaslib.world.GasRegistry
 import net.totobirdcreations.gaslib.world.GasServer
 import org.jetbrains.annotations.ApiStatus
-import org.joml.Vector3d
 
 
 @ApiStatus.Experimental
@@ -71,19 +71,20 @@ object GasAPI {
         return GasRegistry.getRegisteredBurnableFluids();
     }
 
+
     /**
      * Add/Remove an amount of a gas to/from a given position, assuming it is loaded.
      */
     @JvmStatic
-    fun setAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant, amount : Double) : Boolean {
-        return GasServer.setAmount(world, pos, gas, amount);
+    fun setAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant, amount : Double, shouldSave : Boolean = true) : Boolean {
+        return GasServer.setAmount(world, pos, gas, amount, shouldSave = shouldSave);
     }
     /**
      * Add/Remove an amount of a gas to/from a given position, assuming it is loaded.
      */
     @JvmStatic
-    fun modifyAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant, amount : Double) : Boolean {
-        return GasServer.modifyAmount(world, pos, gas, amount);
+    fun addAmount(world : ServerWorld, pos : BlockPos, gas : AbstractGasVariant, amount : Double, shouldSave : Boolean = true) : Boolean {
+        return GasServer.addAmount(world, pos, gas, amount, shouldSave = shouldSave);
     }
     /**
      * Gets the amount of this gas variant at a given position and world.
@@ -104,22 +105,22 @@ object GasAPI {
      * Sets the 'motion' of this gas variant at a given position and world.
      */
     @JvmStatic
-    fun setMotion(world : ServerWorld, pos : BlockPos, vec : Vector3d) : Boolean {
-        return GasServer.setMotion(world, pos, vec);
+    fun setMotion(world : ServerWorld, pos : BlockPos, dir : Direction, amount : Double, shouldSave : Boolean = true) : Boolean {
+        return GasServer.setMotion(world, pos, dir, amount, shouldSave = shouldSave);
     }
     /**
      * Adds to the 'motion' of this gas variant at a given position and world.
      */
     @JvmStatic
-    fun modifyMotion(world : ServerWorld, pos : BlockPos, vec : Vector3d) : Boolean {
-        return GasServer.modifyMotion(world, pos, vec);
+    fun addMotion(world : ServerWorld, pos : BlockPos, dir : Direction, amount : Double, shouldSave : Boolean = true) : Boolean {
+        return GasServer.addMotion(world, pos, dir, amount, shouldSave = shouldSave);
     }
     /**
      * Gets the 'motion' of this gas variant at a given position and world.
      */
     @JvmStatic
-    fun getMotion(world : ServerWorld, pos : BlockPos) : Vector3d? {
-        return GasServer.getMotion(world, pos);
+    fun getMotion(world : ServerWorld, pos : BlockPos, dir : Direction) : Double? {
+        return GasServer.getMotion(world, pos, dir);
     }
 
     /**
